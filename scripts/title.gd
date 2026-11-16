@@ -6,6 +6,8 @@ const MenuItem = preload("res://scripts/menu_item.gd")
 const StageCard = preload("res://scripts/stage_card.gd")
 const Texts = preload("res://texts.gd")
 const Audio = preload("res://scripts/game_audio.gd")
+const LOGO := preload("res://assets/environment/sera_logo.png")
+const LOGO_REGION := Rect2(9, 160, 2137, 451)
 const STAGE_TINT := [
 	Color("#87e7f5"), Color("#8fd9ff"), Color("#ff9e6e"),
 	Color("#ffb46e"), Color("#9fe6d8"), Color("#ffc27b"),
@@ -178,6 +180,22 @@ func _build_main() -> void:
 	main_page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(main_page)
 	main_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var artwork := AtlasTexture.new()
+	artwork.atlas = LOGO
+	artwork.region = LOGO_REGION
+	artwork.filter_clip = true
+	var logo := TextureRect.new()
+	logo.name = "TitleLogo"
+	logo.texture = artwork
+	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	main_page.add_child(logo)
+	logo.anchor_left = 0.055
+	logo.anchor_right = 0.41
+	logo.offset_top = 76
+	logo.offset_bottom = 209
 
 	var column := VBoxContainer.new()
 	main_page.add_child(column)

@@ -15,7 +15,7 @@
 size = Vector2(1120, 116)
 
 [sub_resource type="RectangleShape2D" id="MiddleDeck"]
-size = Vector2(1364, 116)
+size = Vector2(1392, 116)
 
 [sub_resource type="RectangleShape2D" id="FurnaceDeck"]
 size = Vector2(1748, 226)
@@ -61,7 +61,7 @@ position = Vector2(460, 578)
 shape = SubResource("LeftDeck")
 
 [node name="ReceivingDeck" type="CollisionShape2D" parent="World/Walkways"]
-position = Vector2(1918, 578)
+position = Vector2(1904, 578)
 shape = SubResource("MiddleDeck")
 
 [node name="FurnaceDeck" type="CollisionShape2D" parent="World/Walkways"]
@@ -92,7 +92,7 @@ arena_start = 2828.0
 position = Vector2(2428, 520)
 
 [node name="ExitGate" parent="World" instance=ExtResource("10")]
-position = Vector2(4100, 444)
+position = Vector2(3952, 444)
 
 [node name="Projectiles" type="Node2D" parent="World"]
 z_index = 3

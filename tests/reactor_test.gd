@@ -99,7 +99,7 @@ func _last_phase() -> void:
 	await _tap(&"continue_stage")
 	var changed := await _until(func(): return current_scene != null and current_scene.get_instance_id() != id, 45)
 	_check(changed and current_scene.scene_file_path == NEXT_SCENE and current_scene.sera.energy == charge,
-		"Enter carries the remaining momentum down into the rolling mill")
+		"E carries the remaining momentum down into the rolling mill")
 
 
 func _walk_to_aim_pad() -> void:

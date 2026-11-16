@@ -1,7 +1,7 @@
 extends RefCounted
 
 # ==============================================================================
-#  MOMENTUM 문구 모음
+#  SERA 문구 모음
 # ==============================================================================
 #  게임 화면에 나오는 글자는 전부 이 파일에 있습니다. 문구를 바꾸려면 이 파일만
 #  고치면 됩니다.
@@ -219,7 +219,6 @@ const HUD_PRACTICE := "PRACTICE"
 # 시작 배너에서 체크포인트부터 이어 시작할 때의 부제.
 const HUD_FROM_CHECKPOINT := "체크포인트  ·  {구간}"
 # 오른쪽 위 운동량 표시.
-const HUD_MOMENTUM_EYEBROW := "MOMENTUM"
 const HUD_MOMENTUM := "운동량"
 const HUD_DASH := "대시"
 const HUD_SHOCKWAVE := "충격파"
@@ -241,6 +240,7 @@ const CLEAR_PRACTICE_PREVIOUS := "이전 최고 {기록}"
 const CLEAR_NEW_RECORD := "최고 기록 갱신"
 const CLEAR_REPLAY := "다시 플레이"
 const CLEAR_TO_TITLE := "타이틀로"
+const CLEAR_CONTINUE_KEY := "E"
 
 
 # ------------------------------------------------------------------------------
@@ -306,10 +306,13 @@ const FOUNDRY_NOTE_HEAVY_ARMOR := "중장갑 파손"
 const FOUNDRY_MARK_ABSORB := "흡수 구역"
 const FOUNDRY_MARK_RECHARGE := "운동량 보충"
 const FOUNDRY_MARK_HIGH_DECK := "높은 발판으로"
+const FOUNDRY_MARK_DASH := "수평 대시 지점"
 # 첫 빔 아래. [좌클릭]
 const FOUNDRY_HINT_BEAM := ["저 빔이 떨어지면 내가 받아낼게.", "노란 구역에서 길게 눌러 줘"]
-# 운동량이 찬 뒤 첫 구덩이 앞. [W + Shift]
-const FOUNDRY_HINT_LEAP := ["힘이 찼어! 저 너머로 뛰어 볼게.", "발판 끝에서 같이 눌러 줘"]
+# 운동량이 찬 뒤 첫 구덩이 앞. [D + Shift]
+const FOUNDRY_HINT_DASH := ["발판 끝에서 오른쪽으로 대시하자.", "오른쪽을 보고 있으면 Shift만 눌러도 돼"]
+# 주조소의 두 번째 구덩이 앞. [W + Shift]
+const FOUNDRY_HINT_HIGH_LEAP := ["저 발판은 높아. 이번엔 위로 도약하자.", "표식에서 오른쪽을 보고 같이 눌러 줘"]
 # 운동량이 모자란 채 두 번째 빔 근처. [좌클릭]
 const FOUNDRY_HINT_RECHARGE := ["힘이 모자라. 저 빔을 한 번 더 받자.", "노란 구역에서 길게 눌러 줘"]
 

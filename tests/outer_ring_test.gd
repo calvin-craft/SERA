@@ -188,4 +188,4 @@ func _vault() -> void:
 	var id := ring.get_instance_id()
 	await pilot.tap(&"continue_stage")
 	var moved: bool = await pilot.until(func(): return current_scene != null and current_scene.get_instance_id() != id, 45)
-	pilot.check(moved and current_scene.scene_file_path == NEXT, "Enter continues to the control spine")
+	pilot.check(moved and current_scene.scene_file_path == NEXT, "E continues to the control spine")

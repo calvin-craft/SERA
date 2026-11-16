@@ -35,6 +35,14 @@ func _run() -> void:
 func _foundry_resume() -> bool:
 	change_scene_to_file(Store.TITLE)
 	await scene_changed
+	await process_frame
+	var logo := current_scene.main_page.get_node_or_null("TitleLogo") as TextureRect
+	_check(logo != null and logo.is_visible_in_tree() and logo.texture != null
+		and logo.get_global_rect().end.y < current_scene.continue_button.get_global_rect().position.y,
+		"the main menu displays the SERA logo above its buttons")
+	_check(ProjectSettings.get_setting("application/config/name") == "SERA"
+		and OS.get_user_data_dir().replace("\\", "/").trim_suffix("/").ends_with("/Godot/app_userdata/MOMENTUM"),
+		"the game name changes while existing saves use their original directory")
 	_check(current_scene.continue_button.disabled, "fresh profile has no continue")
 	_check(root.gui_get_focus_owner() == current_scene.new_button, "new game starts focused")
 	await _press(KEY_ENTER)
@@ -111,7 +119,7 @@ func _practice_records() -> bool:
 	reactor._finish_stage()
 	_check(not reactor.new_record and FileAccess.get_file_as_string(Store.PRACTICE_SAVE_PATH) == practice_file,
 		"a slower attempt leaves the previous best on disk")
-	await _press(KEY_ENTER)
+	await _press(KEY_E)
 	if not await _at_scene(Store.TITLE):
 		return false
 	progress.reload_practice_records()
@@ -155,7 +163,7 @@ func _reactor_resume() -> bool:
 	reactor.boss.health = 0
 	reactor.sera.energy = 21
 	reactor._finish_stage()
-	await _press(KEY_ENTER)
+	await _press(KEY_E)
 	if not await _at_scene(Store.SCENES[3]):
 		return false
 	var next := progress.resume_snapshot()
@@ -218,7 +226,7 @@ func _later_acts() -> void:
 	wheel = current_scene as Wheel
 	_check(wheel.boss.health == 1 and wheel.boss.perch == 1.0 and wheel.relay.powered and not wheel.finale, "the Foreman restores on the wheel with its shield already cut")
 	wheel._finish_stage()
-	await _press(KEY_ENTER)
+	await _press(KEY_E)
 	if await _at_scene(Store.TITLE):
 		_check(current_scene.continue_button.disabled and progress.resume_snapshot().is_empty(), "campaign clear returns to title with no pending checkpoint")
 		var all_recorded := progress.best_ms(0) == 37200
@@ -237,7 +245,7 @@ func _later_acts() -> void:
 ## Finishes the current stage and continues; expects the stage with this index next.
 func _clear_to(index: int) -> bool:
 	current_scene._finish_stage()
-	await _press(KEY_ENTER)
+	await _press(KEY_E)
 	return await _at_scene(Store.SCENES[index])
 
 

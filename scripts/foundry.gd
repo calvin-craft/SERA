@@ -1,7 +1,10 @@
 extends "res://scripts/stage.gd"
 
 const CHECKPOINTS := [Vector2(150, 519), Vector2(1290, 519), Vector2(2880, 443)]
-const EXIT_X := 4236.0
+const RECEIVING_DECK_START := 1208.0
+const DASH_MARKER := Vector2(993.0, 461.0)
+const HIGH_LEAP_MARKER := Vector2(2573.0, 462.0)
+const EXIT_X := 4060.0
 
 var caught_beam := false
 
@@ -34,13 +37,15 @@ func _update_backdrop() -> void:
 
 func _update_progress() -> void:
 	var x := sera.position.x
-	sera.forward_brace = x >= 1236.0 and absf(x - recharge_beam.position.x) > 128.0
+	sera.forward_brace = x >= RECEIVING_DECK_START and absf(x - recharge_beam.position.x) > 128.0
 	if not sera.is_on_floor():
 		return
 	if checkpoint < 2 and x >= 2841.0 and sera.position.y <= 447.0:
+		learn(&"foundry_high_leap")
 		_reach_checkpoint(2, CHECKPOINTS[2])
 		deck.queue_redraw()
 	elif checkpoint == 0 and x >= 1247.0 and x < 2590.0 and sera.position.y <= 523.0:
+		learn(&"foundry_gap_dash")
 		_reach_checkpoint(1, CHECKPOINTS[1])
 		deck.queue_redraw()
 
@@ -85,7 +90,7 @@ func _on_guard_hit(guard: Guard) -> void:
 func hud_section() -> String:
 	if sera.position.x >= 2828.0:
 		return stage_label(2)
-	if sera.position.x >= 1236.0:
+	if sera.position.x >= RECEIVING_DECK_START:
 		return stage_label(1)
 	return stage_label(0)
 
@@ -98,27 +103,31 @@ func stage_hints() -> Array:
 		if not knows(&"absorb_beam") and sera.energy < Sera.BOOST_COST and beam_ready:
 			hints.append(hint(&"absorb_beam", Vector2(beam.position.x, 300.0),
 				spoken(Texts.FOUNDRY_HINT_BEAM, [["LMB"]]), HEAT if beam.phase == beam.Phase.WARNING else ICE))
-		elif not knows(&"boost_up") and sera.energy >= Sera.BOOST_COST:
-			hints.append(hint(&"boost_up", Vector2(990.0, 440.0),
-				spoken(Texts.FOUNDRY_HINT_LEAP, [["W", "+", "Shift"]])))
-	elif x < 2600.0 and warden.knocked_out and sera.energy < Sera.BOOST_COST and not knows(&"recharge"):
-		if recharge_beam.phase == recharge_beam.Phase.WAIT or recharge_beam.phase == recharge_beam.Phase.WARNING:
+		elif checkpoint == 0 and not knows(&"foundry_gap_dash") and sera.energy >= Sera.BOOST_COST:
+			hints.append(hint(&"foundry_gap_dash", DASH_MARKER,
+				spoken(Texts.FOUNDRY_HINT_DASH, [["D", "+", "Shift"]])))
+	elif x < 2600.0 and warden.knocked_out:
+		var recharge_ready: bool = recharge_beam.phase == recharge_beam.Phase.WAIT or recharge_beam.phase == recharge_beam.Phase.WARNING
+		if sera.energy < Sera.BOOST_COST and not knows(&"recharge") and recharge_ready:
 			hints.append(hint(&"recharge", Vector2(recharge_beam.position.x, 300.0),
 				spoken(Texts.FOUNDRY_HINT_RECHARGE, [["LMB"]]), HEAT))
+		elif x >= 2330.0 and checkpoint < 2 and not knows(&"foundry_high_leap") and sera.energy >= Sera.BOOST_COST:
+			hints.append(hint(&"foundry_high_leap", HIGH_LEAP_MARKER,
+				spoken(Texts.FOUNDRY_HINT_HIGH_LEAP, [["W", "+", "Shift"]])))
 	return hints
 
 
 func hud_marker() -> Array:
 	var x := sera.position.x
-	if x < 1236.0:
+	if x < RECEIVING_DECK_START:
 		if sera.energy >= Sera.BOOST_COST:
-			return [Vector2(986, 461), Texts.MARK_LEAP, ICE]
+			return [DASH_MARKER, Texts.FOUNDRY_MARK_DASH, ICE]
 		if beam.phase != beam.Phase.FALL:
 			return [Vector2(448, 217), Texts.FOUNDRY_MARK_ABSORB, HEAT]
 	elif x < 2828.0 and warden.knocked_out:
 		if sera.energy < Sera.BOOST_COST:
 			return [Vector2(2200, 220), Texts.FOUNDRY_MARK_RECHARGE, HEAT]
-		return [Vector2(2569, 462), Texts.FOUNDRY_MARK_HIGH_DECK, ICE]
+		return [HIGH_LEAP_MARKER, Texts.FOUNDRY_MARK_HIGH_DECK, ICE]
 	elif exit_gate.unlocked:
 		return [Vector2(EXIT_X, 230.0), Texts.MARK_EXIT, ICE]
 	return []
@@ -138,7 +147,7 @@ func _on_warning() -> void:
 
 func _on_captured(origin: Vector2, _charge: int) -> void:
 	caught_beam = true
-	learn(&"recharge" if origin.x > 1236.0 else &"absorb_beam")
+	learn(&"recharge" if origin.x > RECEIVING_DECK_START else &"absorb_beam")
 	effects.catch_energy(origin)
 	_play(Audio.HEAVY_CATCH, -2.0)
 	_hitstop(0.076, 8.0, 0.12, ICE)

@@ -58,9 +58,9 @@ func _opening() -> bool:
 	_check(level.beam.speed == 0.0 and level.beam.phase == level.beam.Phase.HELD, "caught beam stops")
 	_check(paused and level.freeze_left > 0.0, "beam impact applies hitstop")
 	await _until(func(): return level.sera.state == level.sera.State.MOVE, 45)
-	if not await _boost_off_edge(972.0):
+	if not await _boost_off_edge(993.0, false):
 		return false
-	_check(level.sera.energy == 100 - level.sera.BOOST_COST, "upward boost consumes its cost once")
+	_check(level.sera.energy == 100 - level.sera.BOOST_COST, "the horizontal dash consumes its cost once")
 	return _check(await _until(func(): return level.checkpoint == 1, 120), "the first deck activates a checkpoint")
 
 
@@ -95,6 +95,10 @@ func _first_guard() -> bool:
 	var enemy_x := level.warden.position.x
 	await _frames(26)
 	_check(level.warden.position.x > enemy_x + 120 and not paused, "sentry flies after hitstop")
+	if _check(await _until(func(): return not level.warden.knocked_airborne, 48), "the sentry hits the deck"):
+		await _frames(11)
+		_check(level.warden.visible and level.warden.modulate.a < 0.99, "the grounded sentry starts to fade promptly")
+		_check(await _until(func(): return not level.warden.visible, 40), "the fade finishes just after landing")
 	if not _check(await _run_right(2190.0, 290), "the second crane can be reached"):
 		return false
 	Input.action_press(&"absorb")
@@ -103,7 +107,7 @@ func _first_guard() -> bool:
 	if not _check(recharged, "the second beam replenishes momentum"):
 		return false
 	await _until(func(): return sera.state == sera.State.MOVE, 45)
-	return await _boost_off_edge(2556.0)
+	return await _boost_off_edge(2556.0, true)
 
 
 func _furnace() -> void:
@@ -154,6 +158,14 @@ func _restart_and_dash() -> void:
 	var sera := level.sera
 	_check(level.checkpoint == 0 and sera.energy == 0 and not level.exit_gate.unlocked and level.furnace_warden.integrity == 2,
 		"R resets both encounters")
+	Input.action_press(&"move_right")
+	await _frames(4)
+	_check(sera.sprite.animation == &"run_start" and sera.look.rotation > 0.01, "ground movement starts with a forward preparation pose")
+	await _frames(15)
+	Input.action_release(&"move_right")
+	_check(sera.sprite.animation == &"run", "the preparation flows into the running cycle")
+	await _frames(15)
+	_check(sera.sprite.animation == &"idle" and is_zero_approx(sera.look.rotation), "stopping settles the pose back upright")
 	await _run_right(level.beam.position.x - 8.0, 150)
 	Input.action_press(&"absorb")
 	var charged := await _until(func(): return level.caught_beam, 205)
@@ -161,7 +173,7 @@ func _restart_and_dash() -> void:
 	if not _check(charged, "beam becomes available after restarting"):
 		return
 	await _until(func(): return sera.state == sera.State.MOVE, 45)
-	await _tap(&"boost")
+	await _tap_key(KEY_SHIFT)
 	var dashed := await _until(func(): return sera.state == sera.State.BOOST, 30)
 	_check(dashed and sera.velocity.x > 850.0 and is_zero_approx(sera.velocity.y), "Shift without W performs a horizontal dash")
 
@@ -169,9 +181,14 @@ func _restart_and_dash() -> void:
 func _check_tower_transition() -> void:
 	var charge := level.sera.energy
 	var scene_id := level.get_instance_id()
-	await _tap(&"continue_stage")
+	await _tap_key(KEY_ENTER)
+	await _frames(15)
+	var waiting := current_scene != null and current_scene.get_instance_id() == scene_id
+	_check(waiting, "Enter leaves the clear screen waiting for E")
+	if waiting:
+		await _tap_key(KEY_E)
 	var changed := await _until(func(): return current_scene != null and current_scene.get_instance_id() != scene_id, 35)
-	if not _check(changed and current_scene.scene_file_path == "res://scenes/cooling_tower.tscn", "cleared foundry continues to the cooling tower"):
+	if not _check(changed and current_scene.scene_file_path == "res://scenes/cooling_tower.tscn", "pressing E continues to the cooling tower"):
 		return
 	_check(current_scene.sera.energy == charge, "entering the tower carries remaining momentum")
 	var tower_id := current_scene.get_instance_id()
@@ -197,26 +214,36 @@ func _restart() -> bool:
 	return true
 
 
-func _boost_off_edge(edge_x: float) -> bool:
-	var reached := await _run_right(edge_x, 220, true)
+func _boost_off_edge(edge_x: float, upward: bool) -> bool:
+	_set_key(KEY_D, true)
+	var reached := await _until(func(): return level.sera.position.x >= edge_x, 220)
 	if not _check(reached, "reaches takeoff marker %d" % edge_x):
-		Input.action_release(&"move_right")
+		_set_key(KEY_D, false)
 		return false
-	Input.action_press(&"aim_up")
-	await _tap(&"boost")
-	Input.action_release(&"aim_up")
+	var modifier := "W" if upward else "D"
+	var expected := &"foundry_high_leap" if upward else &"foundry_gap_dash"
+	var hints := level.stage_hints()
+	_check(hints.any(func(entry: Dictionary): return entry["id"] == expected and entry["rows"][1][0] == [modifier, "+", "Shift"]),
+		"the leap at %d prompts %s plus Shift" % [edge_x, modifier])
+	if upward:
+		_set_key(KEY_D, false)
+		_set_key(KEY_W, true)
+	await _tap_key(KEY_SHIFT)
+	if upward:
+		_set_key(KEY_W, false)
+		_set_key(KEY_D, true)
 	var launched := await _until(func(): return level.sera.state == level.sera.State.BOOST, 28)
-	_check(launched and level.sera.velocity.y < -520.0, "W and Shift launch upward")
+	var direction_ok := level.sera.velocity.y < -520.0 if upward else is_zero_approx(level.sera.velocity.y)
+	_check(launched and direction_ok, "the prompted boost launches in the expected direction")
 	await _frames(31)
-	Input.action_release(&"move_right")
+	_set_key(KEY_D, false)
 	return launched
 
 
-func _run_right(x: float, limit: int, keep_held: bool = false) -> bool:
+func _run_right(x: float, limit: int) -> bool:
 	Input.action_press(&"move_right")
 	var reached := await _until(func(): return level.sera.position.x >= x, limit)
-	if not keep_held:
-		Input.action_release(&"move_right")
+	Input.action_release(&"move_right")
 	return reached
 
 
@@ -266,6 +293,22 @@ func _tap(action: StringName, count: int = 2) -> void:
 	Input.action_press(action)
 	await _frames(count)
 	Input.action_release(action)
+
+
+func _tap_key(code: Key) -> void:
+	_set_key(code, true)
+	await _frames(3)
+	_set_key(code, false)
+
+
+func _set_key(code: Key, pressed: bool) -> void:
+	var event := InputEventKey.new()
+	event.device = 16
+	event.keycode = code
+	event.physical_keycode = code
+	event.pressed = pressed
+	Input.parse_input_event(event)
+	Input.flush_buffered_events()
 
 
 func _frames(count: int) -> void:

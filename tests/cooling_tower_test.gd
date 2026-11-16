@@ -126,7 +126,7 @@ func _clear_control_room() -> void:
 	await _tap(&"continue_stage")
 	var returned := await _until(func(): return current_scene != null and current_scene.get_instance_id() != previous, 35)
 	_check(returned and current_scene.scene_file_path == REACTOR_SCENE and current_scene.sera.energy == charge,
-		"Enter on tower results carries the remaining momentum into the reactor")
+		"E on tower results carries the remaining momentum into the reactor")
 
 
 func _absorb_to(charge: int, frames: int) -> bool:
@@ -202,8 +202,10 @@ func _until(condition: Callable, frames: int) -> bool:
 
 func _check_bindings_and_atlas() -> void:
 	var key := InputEventKey.new()
+	key.physical_keycode = KEY_E
+	_check(InputMap.action_has_event(&"continue_stage", key), "physical E continues between stages")
 	key.physical_keycode = KEY_ENTER
-	_check(InputMap.action_has_event(&"continue_stage", key), "physical Enter continues between stages")
+	_check(not InputMap.action_has_event(&"continue_stage", key), "physical Enter is reserved for menu confirmation")
 	var atlas := AIM_ATLAS.get_image()
 	_check(atlas.get_size() == Vector2i(768, 256), "the aim atlas contains three fixed-size cells")
 	for index in 3:

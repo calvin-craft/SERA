@@ -109,13 +109,12 @@ func _physics_process(delta: float) -> void:
 		air_carry = false
 		if impact_speed > 230.0:
 			landed.emit(global_position, impact_speed)
-	_update_locomotion()
+	_update_locomotion(axis, delta)
 
 
 func _read_controls(axis: float, delta: float, on_ground: bool) -> void:
 	if axis != 0.0:
 		facing = signf(axis)
-		sprite.flip_h = facing < 0.0
 
 	state = State.MOVE
 	if _use_buffered_action():
@@ -211,13 +210,15 @@ func _reset_pose() -> void:
 	timeline.stop()
 	look.scale = Vector2.ONE
 	look.position = Vector2.ZERO
+	look.rotation = 0.0
 
 
 func _start_action(next_state: State, clip: StringName, frames: StringName) -> void:
+	_reset_pose()
 	state = next_state
+	sprite.flip_h = facing < 0.0
 	sprite.stop()
 	sprite.play(frames)
-	timeline.stop()
 	timeline.play(clip)
 
 
@@ -253,13 +254,42 @@ func _on_action_finished(clip: StringName) -> void:
 		state = State.MOVE
 
 
-func _update_locomotion() -> void:
+func _update_locomotion(axis: float, delta: float) -> void:
 	if state == State.BRACE:
+		_blend_locomotion_pose(0.0, 1.0, delta)
+		sprite.flip_h = facing < 0.0
 		sprite.play(&"brace_shot" if forward_brace else &"brace")
 	elif state == State.MOVE:
 		if not is_on_floor():
+			_blend_locomotion_pose(0.0, 1.0, delta)
+			sprite.flip_h = facing < 0.0
 			sprite.play(&"air" if velocity.y < -25.0 else &"fall")
-		elif absf(velocity.x) > 26.0:
-			sprite.play(&"run", clampf(absf(velocity.x) / RUN_SPEED, 0.55, 1.45))
+		elif axis != 0.0 or absf(velocity.x) > 26.0:
+			_update_run(axis, delta)
 		else:
+			_blend_locomotion_pose(0.0, 1.0, delta)
+			sprite.flip_h = facing < 0.0
 			sprite.play(&"idle")
+
+
+func _update_run(axis: float, delta: float) -> void:
+	var speed := absf(velocity.x)
+	var direction := signf(velocity.x) if speed > 26.0 else facing
+	var turning := sprite.flip_h != (direction < 0.0)
+	var starting := sprite.animation == &"run_start"
+	var running := sprite.animation == &"run" or starting
+	sprite.flip_h = direction < 0.0
+	if axis != 0.0 and speed < RUN_SPEED * 0.82 and (turning or not running):
+		sprite.stop()
+		sprite.play(&"run_start")
+	elif not starting or not sprite.is_playing() or axis == 0.0:
+		sprite.play(&"run", clampf(speed / RUN_SPEED, 0.48, 1.3))
+	starting = sprite.animation == &"run_start"
+	var lean := direction * (0.064 if starting else 0.026) if axis != 0.0 else 0.0
+	var height := 0.97 if starting and sprite.frame == 0 else 1.0
+	_blend_locomotion_pose(lean, height, delta)
+
+
+func _blend_locomotion_pose(lean: float, height: float, delta: float) -> void:
+	look.rotation = move_toward(look.rotation, lean, delta * 1.38)
+	look.scale.y = move_toward(look.scale.y, height, delta * 0.85)

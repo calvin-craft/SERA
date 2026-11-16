@@ -119,7 +119,7 @@ func _wheel_phase() -> void:
 	var id := wheel.get_instance_id()
 	await pilot.tap(&"continue_stage")
 	var moved: bool = await pilot.until(func(): return current_scene != null and current_scene.get_instance_id() != id, 45)
-	pilot.check(moved and current_scene.scene_file_path == NEXT and current_scene.sera.energy == 0, "Enter starts a fresh circuit at the foundry")
+	pilot.check(moved and current_scene.scene_file_path == NEXT and current_scene.sera.energy == 0, "E starts a fresh circuit at the foundry")
 
 
 ## Plays the wheel's pattern until the core is bared.

@@ -11,10 +11,10 @@ const CYAN := Color("#76e4ff")
 func _draw() -> void:
 	_draw_crane(448.0)
 	_draw_crane(2200.0)
-	_draw_pit(1020.0, 1236.0, 520.0, 520.0)
+	_draw_pit(1020.0, 1208.0, 520.0, 520.0)
 	_draw_pit(2600.0, 2828.0, 520.0, 444.0)
 	_draw_deck(-100.0, 1020.0, 520.0)
-	_draw_deck(1236.0, 2600.0, 520.0)
+	_draw_deck(1208.0, 2600.0, 520.0)
 	_draw_deck(2828.0, 4576.0, 444.0)
 	_draw_warning_zone(448.0, 120.0)
 	_draw_warning_zone(993.0, 27.0)
@@ -104,5 +104,5 @@ func _draw_furnace() -> void:
 		draw_rect(Rect2(x, 151, 13, 293), Color(0.08, 0.09, 0.13, 0.54))
 		draw_line(Vector2(x, 149), Vector2(x + 202, 149), EDGE.darkened(0.42), 3.0)
 		draw_rect(Rect2(x + 12, 177, 4, 11), Color("#ef885b"))
-	for x in range(4144, 4350, 31):
+	for x in range(3996, 4174, 31):
 		draw_line(Vector2(x, 450), Vector2(x + 18, 450), CYAN.darkened(0.32), 2.0)

@@ -129,8 +129,7 @@ func _draw_resources() -> void:
 
 	var left := x + 34.0
 	var right := plate.end.x - 30.0
-	MenuTheme.spaced(self, number_font, Vector2(left, 44), Texts.HUD_MOMENTUM_EYEBROW, 13, CYAN, 2.5)
-	draw_string(text_font, Vector2(left + 104, 44), Texts.HUD_MOMENTUM, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, MUTED)
+	draw_string(bold_font, Vector2(left, 45), Texts.HUD_MOMENTUM, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, CYAN)
 	var number := "%d" % roundi(shown_energy)
 	var tint := CYAN.lerp(Color.WHITE, gain_flash * 0.8)
 	if spend_flash > 0.0:
@@ -536,12 +535,12 @@ func _draw_summary() -> void:
 	if keys_alpha > 0.0:
 		var action: String = level.result_action_label()
 		var retry_width := _keycap_width("R", Texts.CLEAR_REPLAY)
-		var next_width := _keycap_width("Enter", action) if not action.is_empty() else 0.0
+		var next_width := _keycap_width(Texts.CLEAR_CONTINUE_KEY, action) if not action.is_empty() else 0.0
 		var total := retry_width + (next_width + 34.0 if next_width > 0.0 else 0.0)
 		var x := half - total * 0.5
 		var y := band.end.y - 40.0
 		if next_width > 0.0:
-			MenuTheme.keycap(self, Vector2(x, y), "Enter", action, keys_alpha)
+			MenuTheme.keycap(self, Vector2(x, y), Texts.CLEAR_CONTINUE_KEY, action, keys_alpha)
 			x += next_width + 34.0
 		MenuTheme.keycap(self, Vector2(x, y), "R", Texts.CLEAR_REPLAY, keys_alpha)
 

@@ -32,8 +32,8 @@ var shield_flash := 0.0
 ## Seconds until a defeated guard disappears; negative while it is still fighting
 ## or flying from the knockback.
 var vanish_left := -1.0
-const VANISH_DELAY := 2.2
-const VANISH_FADE := 0.7
+const IMPACT_SETTLE := 0.1
+const VANISH_FADE := 0.36
 
 @onready var pivot: Node2D = $Pivot
 @onready var armor: Sprite2D = $Pivot/Armor
@@ -202,13 +202,11 @@ func _update_knockback(delta: float) -> void:
 	if is_on_floor() and knocked_airborne:
 		knocked_airborne = false
 		crashed.emit(global_position)
-		vanish_left = VANISH_DELAY
+		vanish_left = IMPACT_SETTLE + VANISH_FADE
 	if vanish_left > 0.0:
 		vanish_left = maxf(0.0, vanish_left - delta)
 		if vanish_left < VANISH_FADE:
-			# Flicker out like a powered-down machine.
-			var fade := vanish_left / VANISH_FADE
-			modulate.a = fade * (0.45 if int(vanish_left * 24.0) % 2 == 0 else 1.0)
+			modulate.a = smoothstep(0.0, VANISH_FADE, vanish_left)
 		if vanish_left == 0.0:
 			_vanish()
 			return

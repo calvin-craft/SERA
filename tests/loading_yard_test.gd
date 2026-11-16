@@ -84,7 +84,7 @@ func _last_phase() -> void:
 	var id := yard.get_instance_id()
 	await pilot.tap(&"continue_stage")
 	var moved: bool = await pilot.until(func(): return current_scene != null and current_scene.get_instance_id() != id, 45)
-	pilot.check(moved and current_scene.scene_file_path == NEXT, "Enter continues to the outer ring")
+	pilot.check(moved and current_scene.scene_file_path == NEXT, "E continues to the outer ring")
 
 
 ## Plays the crane's pattern until the core is bared: out from under red slabs,
