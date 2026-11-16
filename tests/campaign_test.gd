@@ -10,6 +10,7 @@ const Yard = preload("res://scripts/loading_yard.gd")
 const Ring = preload("res://scripts/outer_ring.gd")
 const Spine = preload("res://scripts/control_spine.gd")
 const Wheel = preload("res://scripts/great_wheel.gd")
+const TitleBackdrop = preload("res://scripts/title_backdrop.gd")
 
 var progress: Store
 var failures: Array[String] = []
@@ -25,7 +26,7 @@ func _run() -> void:
 		await _later_acts()
 	await Pilot.close_scene(self)
 	if failures.is_empty():
-		print("PASS: title, pause and retry, checkpoint and maintenance power restoration, fixed practice starts and persistent splits, nine campaign records and the ending")
+		print("PASS: animated title, pause and retry, checkpoint and maintenance power restoration, fixed practice starts and persistent splits, nine campaign records and the ending")
 	else:
 		for failure in failures:
 			printerr("FAIL: ", failure)
@@ -40,6 +41,14 @@ func _foundry_resume() -> bool:
 	_check(logo != null and logo.is_visible_in_tree() and logo.texture != null
 		and logo.get_global_rect().end.y < current_scene.continue_button.get_global_rect().position.y,
 		"the main menu displays the SERA logo above its buttons")
+	var metal := logo.material as ShaderMaterial if logo else null
+	_check(metal != null and metal.shader != null, "the SERA logo has the steel reflection material")
+	_check_title_animation()
+	if metal != null:
+		await create_timer(2.0).timeout
+		var reflection: Variant = metal.get_shader_parameter(&"reflection_position")
+		_check(reflection is float and reflection > 0.0 and reflection < 1.0,
+			"the metal reflection sweeps across the title letters")
 	_check(ProjectSettings.get_setting("application/config/name") == "SERA"
 		and OS.get_user_data_dir().replace("\\", "/").trim_suffix("/").ends_with("/Godot/app_userdata/MOMENTUM"),
 		"the game name changes while existing saves use their original directory")
@@ -78,6 +87,58 @@ func _foundry_resume() -> bool:
 	var next := progress.resume_snapshot()
 	_check(progress.best_ms(0) == 37200 and next["stage"] == 1 and next["charge"] == 67, "foundry clear records time and carries charge")
 	return await _leave_to_title()
+
+
+func _check_title_animation() -> void:
+	var backdrop := current_scene.get_node_or_null("TitleBackdrop") as TitleBackdrop
+	if not _check(backdrop != null and backdrop.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+			"the animated backdrop leaves the title menu available for pointer input"):
+		return
+	var foundry_image := backdrop.get_node("Artwork/Foundry") as Sprite2D
+	var foundry_transform := foundry_image.global_transform
+	var portrait_origin := backdrop.portrait.global_position
+	var original_catwalk := backdrop.catwalk.position
+	var original_pipes := backdrop.pipes.position
+	backdrop._process(2.0)
+	_check(foundry_image.global_transform.is_equal_approx(foundry_transform)
+		and backdrop.portrait.global_position.is_equal_approx(portrait_origin),
+		"the foundry image and Sera's stance stay anchored while the title animates")
+	_check(backdrop.catwalk.position.distance_to(original_catwalk) > 1.0
+		and backdrop.pipes.position.distance_to(original_pipes) > 1.0,
+		"the catwalk and pipes have their own movement")
+	var sera := backdrop.portrait
+	_check(sera.skin.get_bone_count() == 7 and not sera.skin.polygons.is_empty(),
+		"the title portrait uses a bound skeleton and a subdivided mesh")
+	sera.pose_at(0.0)
+	var gaze := sera.skin.material as ShaderMaterial
+	_check(gaze != null and gaze.get_shader_parameter(&"forward_portrait") != null
+		and gaze.get_shader_parameter(&"look_ahead") == 1.0,
+		"Sera opens the title looking ahead with the original eye artwork")
+	var rest := sera.to_local(sera.emitter.global_position)
+	var rest_head := sera.head.rotation
+	var rest_forearm_width := sera.forearm.transform.determinant()
+	var next := rest
+	var max_step := 0.0
+	for sample in range(1, ceili(sera.CYCLE * 60.0) + 11):
+		var previous := next
+		sera.pose_at(float(sample) / 60.0)
+		next = sera.to_local(sera.emitter.global_position)
+		max_step = maxf(max_step, next.distance_to(previous))
+		if sample == roundi(sera.LOOK_AHEAD_TIME * 60.0) - 1:
+			_check(next.distance_to(rest) < 13.0 and absf(sera.head.rotation - rest_head) < 0.02
+				and gaze != null and gaze.get_shader_parameter(&"look_ahead") == 1.0,
+				"Sera holds the forward gaze for the first five seconds")
+		if sample == roundi((sera.LOOK_AHEAD_TIME + 2.20) * 60.0):
+			_check(next.y < rest.y - 84.0 and next.x > rest.x + 6.0
+				and sera.head.rotation < rest_head - 0.25
+				and sera.forearm.transform.determinant() > rest_forearm_width + 0.22
+				and sera.emitter.self_modulate.a > 0.5
+				and gaze != null and gaze.get_shader_parameter(&"look_ahead") == 0.0,
+				"Sera lifts and rolls the outer wrist toward her gaze")
+	_check(max_step < 10.0 and next.distance_to(rest) < 13.0
+		and gaze != null and gaze.get_shader_parameter(&"look_ahead") == 1.0,
+		"Sera returns smoothly to the forward gaze at the start of the next loop")
+	sera.pose_at(backdrop.clock)
 
 
 func _practice_records() -> bool:

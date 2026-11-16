@@ -7,6 +7,7 @@ const StageCard = preload("res://scripts/stage_card.gd")
 const Texts = preload("res://texts.gd")
 const Audio = preload("res://scripts/game_audio.gd")
 const LOGO := preload("res://assets/environment/sera_logo.png")
+const LOGO_FINISH := preload("res://assets/environment/sera_logo.gdshader")
 const LOGO_REGION := Rect2(9, 160, 2137, 451)
 const STAGE_TINT := [
 	Color("#87e7f5"), Color("#8fd9ff"), Color("#ff9e6e"),
@@ -25,7 +26,6 @@ var status: Label
 var confirm_new: ConfirmationDialog
 var loading := false
 
-var background: TextureRect
 var decor: Control
 var curtain: ColorRect
 var menu_items: Array[MenuItem] = []
@@ -42,13 +42,6 @@ var sound_ready := false
 func _ready() -> void:
 	campaign.reload_profile()
 	theme = MenuTheme.create()
-	background = TextureRect.new()
-	background.texture = preload("res://assets/environment/title.jpg")
-	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(background)
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_add_shade()
 	_add_particles()
 
@@ -196,6 +189,16 @@ func _build_main() -> void:
 	logo.anchor_right = 0.41
 	logo.offset_top = 76
 	logo.offset_bottom = 209
+	var metal := ShaderMaterial.new()
+	metal.shader = LOGO_FINISH
+	logo.material = metal
+	var reflection := logo.create_tween().set_loops()
+	reflection.tween_interval(1.25)
+	reflection.tween_method(
+		func(position: float) -> void: metal.set_shader_parameter(&"reflection_position", position),
+		-0.22, 1.22, 1.8
+	)
+	reflection.tween_interval(4.5)
 
 	var column := VBoxContainer.new()
 	main_page.add_child(column)

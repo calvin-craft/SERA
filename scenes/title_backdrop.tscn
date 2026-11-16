@@ -1,0 +1,48 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/title_backdrop.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/environment/title_foundry.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/environment/title_catwalk.png" id="3"]
+[ext_resource type="Script" path="res://scripts/title_portrait.gd" id="4"]
+[ext_resource type="Texture2D" path="res://assets/characters/sera_title_wrist.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/environment/title_pipes.png" id="6"]
+
+[node name="TitleBackdrop" type="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="Artwork" type="Node2D" parent="."]
+texture_filter = 4
+
+[node name="Foundry" type="Sprite2D" parent="Artwork"]
+position = Vector2(576, 324)
+scale = Vector2(0.72, 0.72)
+texture = ExtResource("2")
+
+[node name="Catwalk" type="Sprite2D" parent="Artwork"]
+modulate = Color(0.72, 0.79, 0.82, 1)
+position = Vector2(876, 77)
+scale = Vector2(0.38, 0.38)
+texture = ExtResource("3")
+
+[node name="Sera" type="Node2D" parent="Artwork"]
+position = Vector2(699, 9)
+scale = Vector2(0.44, 0.44)
+script = ExtResource("4")
+
+[node name="Skin" type="Polygon2D" parent="Artwork/Sera"]
+texture = ExtResource("5")
+polygon = PackedVector2Array(0, 0, 1024, 0, 1024, 1536, 0, 1536)
+uv = PackedVector2Array(0, 0, 1024, 0, 1024, 1536, 0, 1536)
+
+[node name="Pipes" type="Sprite2D" parent="Artwork"]
+modulate = Color(0.8, 0.86, 0.9, 1)
+position = Vector2(325, 643)
+scale = Vector2(0.47, 0.47)
+texture = ExtResource("6")
