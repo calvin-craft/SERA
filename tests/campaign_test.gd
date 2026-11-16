@@ -25,8 +25,9 @@ func _run() -> void:
 	if await _foundry_resume() and await _practice_records() and await _tower_resume() and await _reactor_resume():
 		await _later_acts()
 	await Pilot.close_scene(self)
+	_legacy_migration()
 	if failures.is_empty():
-		print("PASS: animated title, pause and retry, checkpoint and maintenance power restoration, fixed practice starts and persistent splits, nine campaign records and the ending")
+		print("PASS: animated title, pause and retry, checkpoint and maintenance power restoration, fixed practice starts and persistent splits, nine campaign records, the ending and MOMENTUM save migration")
 	else:
 		for failure in failures:
 			printerr("FAIL: ", failure)
@@ -50,8 +51,8 @@ func _foundry_resume() -> bool:
 		_check(reflection is float and reflection > 0.0 and reflection < 1.0,
 			"the metal reflection sweeps across the title letters")
 	_check(ProjectSettings.get_setting("application/config/name") == "SERA"
-		and OS.get_user_data_dir().replace("\\", "/").trim_suffix("/").ends_with("/Godot/app_userdata/MOMENTUM"),
-		"the game name changes while existing saves use their original directory")
+		and OS.get_user_data_dir().replace("\\", "/").trim_suffix("/").ends_with("/Godot/app_userdata/SERA"),
+		"saves live in the SERA user directory")
 	_check(current_scene.continue_button.disabled, "fresh profile has no continue")
 	_check(root.gui_get_focus_owner() == current_scene.new_button, "new game starts focused")
 	await _press(KEY_ENTER)
@@ -370,3 +371,30 @@ func _check(condition: bool, label: String) -> bool:
 	if not condition:
 		failures.append(label)
 	return condition
+
+
+## Saves from the MOMENTUM folder are copied once and never overwrite SERA saves.
+func _legacy_migration() -> void:
+	var legacy_dir := OS.get_user_data_dir().get_base_dir().path_join(Store.LEGACY_USER_DIR)
+	var paths := {Store.SAVE_PATH: "momentum_campaign.json", Store.PRACTICE_SAVE_PATH: "momentum_practice.json"}
+	var contents := {}
+	for target: String in paths:
+		contents[target] = FileAccess.get_file_as_string(target) if FileAccess.file_exists(target) else '{"version": 1}'
+	DirAccess.make_dir_recursive_absolute(legacy_dir)
+	for target: String in paths:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(target))
+		var file := FileAccess.open(legacy_dir.path_join(paths[target]), FileAccess.WRITE)
+		file.store_string(contents[target])
+		file.close()
+	Store.migrate_legacy_saves()
+	for target: String in paths:
+		_check(FileAccess.file_exists(target) and FileAccess.get_file_as_string(target) == contents[target],
+			"%s is copied from the MOMENTUM save folder" % paths[target])
+		var file := FileAccess.open(legacy_dir.path_join(paths[target]), FileAccess.WRITE)
+		file.store_string("{}")
+		file.close()
+	Store.migrate_legacy_saves()
+	for target: String in paths:
+		_check(FileAccess.get_file_as_string(target) == contents[target], "an existing %s is never overwritten" % target)
+		DirAccess.remove_absolute(legacy_dir.path_join(paths[target]))
+	DirAccess.remove_absolute(legacy_dir)

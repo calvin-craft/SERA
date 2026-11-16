@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="SERA"
 config/use_custom_user_dir=true
-config/custom_user_dir_name="Godot/app_userdata/MOMENTUM"
+config/custom_user_dir_name="Godot/app_userdata/SERA"
 run/main_scene="res://scenes/title.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 

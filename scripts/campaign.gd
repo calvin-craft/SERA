@@ -4,8 +4,15 @@ enum Mode { DIRECT, CAMPAIGN, PRACTICE }
 
 const Texts = preload("res://texts.gd")
 const TITLE := "res://scenes/title.tscn"
-const SAVE_PATH := "user://momentum_campaign.json"
-const PRACTICE_SAVE_PATH := "user://momentum_practice.json"
+const SAVE_PATH := "user://sera_campaign.json"
+const PRACTICE_SAVE_PATH := "user://sera_practice.json"
+## Saves written while the project was called MOMENTUM, in the sibling
+## app_userdata folder. Copied once into the new folder when it has none.
+const LEGACY_USER_DIR := "MOMENTUM"
+const LEGACY_SAVES := {
+	"momentum_campaign.json": SAVE_PATH,
+	"momentum_practice.json": PRACTICE_SAVE_PATH,
+}
 const SAVE_VERSION := 1
 const PRACTICE_SAVE_VERSION := 1
 const MAX_RECORD_MS := 86400000
@@ -44,8 +51,23 @@ var learned: Dictionary = {}
 
 
 func _ready() -> void:
+	migrate_legacy_saves()
 	reload_profile()
 	reload_practice_records()
+
+
+## Copies saves from the old MOMENTUM folder. Old files are left in place, and
+## a save that already exists under the new name is never overwritten.
+static func migrate_legacy_saves() -> void:
+	var legacy_dir := OS.get_user_data_dir().get_base_dir().path_join(LEGACY_USER_DIR)
+	for old_name: String in LEGACY_SAVES:
+		var target: String = LEGACY_SAVES[old_name]
+		var source := legacy_dir.path_join(old_name)
+		if FileAccess.file_exists(target) or not FileAccess.file_exists(source):
+			continue
+		var error := DirAccess.copy_absolute(source, ProjectSettings.globalize_path(target))
+		if error != OK:
+			push_warning("Could not copy %s from the MOMENTUM save folder (%s)" % [old_name, error_string(error)])
 
 
 static func _blank_profile() -> Dictionary:

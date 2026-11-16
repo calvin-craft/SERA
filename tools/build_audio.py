@@ -1,4 +1,4 @@
-"""Render Momentum's original mechanical effects and looping room tones.
+"""Render SERA's original mechanical effects and looping room tones.
 
 Run from any directory with Python and NumPy. The WAVs are used directly by Godot.
 """
