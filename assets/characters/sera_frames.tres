@@ -1,0 +1,230 @@
+[gd_resource type="SpriteFrames" load_steps=25 format=3]
+
+[ext_resource type="Texture2D" path="res://assets/characters/sera_atlas.png" id="1"]
+[ext_resource type="Texture2D" path="res://assets/characters/sera_guard_atlas.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/characters/sera_burst_up_atlas.png" id="3"]
+
+[sub_resource type="AtlasTexture" id="idle"]
+atlas = ExtResource("1")
+region = Rect2(0, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="run_stride"]
+atlas = ExtResource("1")
+region = Rect2(256, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="run_pass"]
+atlas = ExtResource("1")
+region = Rect2(512, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="run_other_stride"]
+atlas = ExtResource("1")
+region = Rect2(768, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="run_other_pass"]
+atlas = ExtResource("1")
+region = Rect2(1024, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="fall"]
+atlas = ExtResource("1")
+region = Rect2(0, 256, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="brace"]
+atlas = ExtResource("1")
+region = Rect2(256, 256, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="catch"]
+atlas = ExtResource("1")
+region = Rect2(512, 256, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="compress"]
+atlas = ExtResource("1")
+region = Rect2(768, 256, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="launch_coil"]
+atlas = ExtResource("1")
+region = Rect2(1024, 256, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="dash"]
+atlas = ExtResource("1")
+region = Rect2(0, 512, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="lift"]
+atlas = ExtResource("1")
+region = Rect2(256, 512, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="windup"]
+atlas = ExtResource("1")
+region = Rect2(512, 512, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="release"]
+atlas = ExtResource("1")
+region = Rect2(768, 512, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="recover"]
+atlas = ExtResource("1")
+region = Rect2(1024, 512, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="guard"]
+atlas = ExtResource("2")
+region = Rect2(0, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="guard_impact"]
+atlas = ExtResource("2")
+region = Rect2(256, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="guard_recoil"]
+atlas = ExtResource("2")
+region = Rect2(512, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="aim_prepare"]
+atlas = ExtResource("3")
+region = Rect2(0, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="aim_release"]
+atlas = ExtResource("3")
+region = Rect2(256, 0, 256, 256)
+filter_clip = true
+
+[sub_resource type="AtlasTexture" id="aim_recoil"]
+atlas = ExtResource("3")
+region = Rect2(512, 0, 256, 256)
+filter_clip = true
+
+[resource]
+animations = [
+{
+"frames": [
+{"duration": 2.0, "texture": SubResource("aim_prepare")},
+{"duration": 2.0, "texture": SubResource("aim_release")},
+{"duration": 3.0, "texture": SubResource("aim_recoil")},
+],
+"loop": false,
+"name": &"burst_up",
+"speed": 20.0
+},
+{
+"frames": [{"duration": 1.0, "texture": SubResource("guard")}],
+"loop": false,
+"name": &"brace_shot",
+"speed": 12.0
+},
+{
+"frames": [
+{"duration": 1.55, "texture": SubResource("guard_impact")},
+{"duration": 1.75, "texture": SubResource("guard_recoil")},
+{"duration": 0.9, "texture": SubResource("guard")},
+],
+"loop": false,
+"name": &"catch_shot",
+"speed": 20.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": SubResource("idle")},
+],
+"loop": true,
+"name": &"idle",
+"speed": 6.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": SubResource("run_stride")},
+{"duration": 1.0, "texture": SubResource("run_pass")},
+{"duration": 1.0, "texture": SubResource("run_other_stride")},
+{"duration": 1.0, "texture": SubResource("run_other_pass")},
+],
+"loop": true,
+"name": &"run",
+"speed": 12.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": SubResource("lift")},
+{"duration": 3.0, "texture": SubResource("fall")},
+],
+"loop": false,
+"name": &"air",
+"speed": 9.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": SubResource("fall")},
+],
+"loop": false,
+"name": &"fall",
+"speed": 9.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": SubResource("brace")},
+],
+"loop": false,
+"name": &"brace",
+"speed": 12.0
+},
+{
+"frames": [
+{"duration": 1.45, "texture": SubResource("catch")},
+{"duration": 1.5, "texture": SubResource("compress")},
+{"duration": 1.2, "texture": SubResource("brace")},
+],
+"loop": false,
+"name": &"catch",
+"speed": 20.0
+},
+{
+"frames": [
+{"duration": 1.15, "texture": SubResource("launch_coil")},
+{"duration": 4.0, "texture": SubResource("dash")},
+],
+"loop": false,
+"name": &"dash",
+"speed": 20.0
+},
+{
+"frames": [
+{"duration": 1.15, "texture": SubResource("launch_coil")},
+{"duration": 4.0, "texture": SubResource("lift")},
+],
+"loop": false,
+"name": &"lift",
+"speed": 20.0
+},
+{
+"frames": [
+{"duration": 2.0, "texture": SubResource("windup")},
+{"duration": 2.0, "texture": SubResource("release")},
+{"duration": 3.0, "texture": SubResource("recover")},
+],
+"loop": false,
+"name": &"burst",
+"speed": 20.0
+},
+{
+"frames": [
+{"duration": 1.0, "texture": SubResource("fall")},
+],
+"loop": false,
+"name": &"hurt",
+"speed": 10.0
+},
+]

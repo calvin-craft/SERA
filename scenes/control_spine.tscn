@@ -1,0 +1,243 @@
+[gd_scene load_steps=23 format=3]
+
+[ext_resource type="Script" path="res://scripts/control_spine.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/environment/cooling_tower.jpg" id="2"]
+[ext_resource type="Script" path="res://scripts/sector_deck.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/kinetic_relay.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/pulse_valve.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/shuttle.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/conveyor.gd" id="7"]
+[ext_resource type="PackedScene" path="res://scenes/bulkhead.tscn" id="8"]
+[ext_resource type="Script" path="res://scripts/timed_relay.gd" id="9"]
+[ext_resource type="Script" path="res://scripts/shutter.gd" id="10"]
+[ext_resource type="Script" path="res://scripts/hazard_gate.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/ram.gd" id="12"]
+[ext_resource type="Script" path="res://scripts/drone.gd" id="13"]
+[ext_resource type="PackedScene" path="res://scenes/warden.tscn" id="14"]
+[ext_resource type="PackedScene" path="res://scenes/sera.tscn" id="15"]
+[ext_resource type="Script" path="res://scripts/effects.gd" id="16"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="17"]
+
+[sub_resource type="RectangleShape2D" id="Deck0"]
+size = Vector2(1425, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck1"]
+size = Vector2(205, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck2"]
+size = Vector2(500, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck3"]
+size = Vector2(1600, 116)
+
+[sub_resource type="CanvasItemMaterial" id="AdditiveEffects"]
+blend_mode = 1
+
+[node name="ControlSpine" type="Node2D"]
+process_mode = 3
+script = ExtResource("1")
+next_scene = "res://scenes/great_wheel.tscn"
+carry_charge = true
+horizontal_bounds = Vector2(-70, 4420)
+fall_limit = 1500
+camera_x = Vector2(576, 3908)
+camera_y = Vector2(342, 982)
+
+[node name="FarBackground" type="CanvasLayer" parent="."]
+layer = -2
+
+[node name="Backdrop" type="Sprite2D" parent="FarBackground"]
+position = Vector2(-40, -30)
+scale = Vector2(0.82, 0.82)
+texture = ExtResource("2")
+centered = false
+modulate = Color(0.8, 0.84, 1.0, 1)
+
+[node name="World" type="Node2D" parent="."]
+process_mode = 1
+
+[node name="DeckArt" type="Node2D" parent="World"]
+script = ExtResource("3")
+iron = Color(0.11, 0.16, 0.23, 1)
+edge = Color(0.5, 0.62, 0.74, 1)
+seam = Color(0.22, 0.3, 0.4, 1)
+dark = Color(0.04, 0.07, 0.12, 1)
+accent = Color(1.0, 0.72, 0.45, 1)
+live = Color(0.52, 0.9, 1.0, 1)
+
+[node name="Walkways" type="StaticBody2D" parent="World"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Lower" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(612.5, 1218)
+shape = SubResource("Deck0")
+
+[node name="MiddleA" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(1597.5, 898)
+shape = SubResource("Deck1")
+
+[node name="MiddleB" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(2450, 898)
+shape = SubResource("Deck2")
+
+[node name="Upper" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(3670, 578)
+shape = SubResource("Deck3")
+
+[node name="Checkpoints" type="Node2D" parent="World"]
+
+[node name="Checkpoint1" type="Marker2D" parent="World/Checkpoints"]
+position = Vector2(1570, 839)
+
+[node name="Checkpoint2" type="Marker2D" parent="World/Checkpoints"]
+position = Vector2(2950, 519)
+
+[node name="AimPads" type="Node2D" parent="World"]
+
+[node name="AimPad1" type="Marker2D" parent="World/AimPads"]
+position = Vector2(1112, 1160)
+
+[node name="AimPad2" type="Marker2D" parent="World/AimPads"]
+position = Vector2(3102, 520)
+
+[node name="AimPad3" type="Marker2D" parent="World/AimPads"]
+position = Vector2(3682, 520)
+
+[node name="Exit" type="Marker2D" parent="World"]
+position = Vector2(4330, 520)
+
+[node name="LiftRelay" type="Node2D" parent="World"]
+position = Vector2(1260, 940)
+script = ExtResource("4")
+
+[node name="ValveL" type="Node2D" parent="World"]
+position = Vector2(1060, 1160)
+script = ExtResource("5")
+
+[node name="LiftA" type="AnimatableBody2D" parent="World"]
+position = Vector2(1410, 1160)
+script = ExtResource("6")
+travel = Vector2(0, -320)
+speed = 150
+needs_power = true
+half_width = 80
+wait = 1.2
+
+[node name="TransferBelt" type="StaticBody2D" parent="World"]
+position = Vector2(1700, 840)
+script = ExtResource("7")
+length = 500
+speed = 240
+
+[node name="MiddleGate" parent="World" instance=ExtResource("8")]
+position = Vector2(2640, 840)
+
+[node name="LiftB" type="AnimatableBody2D" parent="World"]
+position = Vector2(2785, 840)
+script = ExtResource("6")
+travel = Vector2(0, -320)
+speed = 150
+half_width = 80
+wait = 1.2
+
+[node name="ValveA" type="Node2D" parent="World"]
+position = Vector2(3060, 520)
+script = ExtResource("5")
+
+[node name="TimedRelay" type="Node2D" parent="World"]
+position = Vector2(3250, 300)
+script = ExtResource("9")
+hold_time = 3
+
+[node name="Shutter" type="StaticBody2D" parent="World"]
+position = Vector2(3420, 520)
+script = ExtResource("10")
+
+[node name="ShieldRelay" type="Node2D" parent="World"]
+position = Vector2(3830, 300)
+script = ExtResource("4")
+
+[node name="ExitGate" parent="World" instance=ExtResource("8")]
+position = Vector2(4230, 520)
+
+[node name="Sera" parent="World" instance=ExtResource("15")]
+position = Vector2(150, 1159)
+collision_mask = 5
+
+[node name="PressA" type="Node2D" parent="World"]
+position = Vector2(1850, 840)
+script = ExtResource("11")
+kind = "press"
+off_time = 1.5
+on_time = 0.3
+half_width = 56
+
+[node name="PressB" type="Node2D" parent="World"]
+position = Vector2(2050, 840)
+script = ExtResource("11")
+kind = "press"
+off_time = 1.5
+on_time = 0.3
+phase = 1.45
+half_width = 56
+
+[node name="SteamA" type="Node2D" parent="World"]
+position = Vector2(3330, 520)
+script = ExtResource("11")
+kind = "steam"
+off_time = 1.6
+on_time = 0.9
+
+[node name="RamA" type="Node2D" parent="World"]
+position = Vector2(900, 1160)
+script = ExtResource("12")
+run_left = 420
+run_right = 1100
+
+[node name="DroneA" type="Node2D" parent="World"]
+position = Vector2(760, 1160)
+script = ExtResource("13")
+patrol_left = 420
+patrol_right = 1100
+
+[node name="WardenA" parent="World" instance=ExtResource("14")]
+position = Vector2(2450, 838)
+reinforced = true
+arena_start = 1500
+
+[node name="DroneB" type="Node2D" parent="World"]
+position = Vector2(3800, 520)
+script = ExtResource("13")
+patrol_left = 3520
+patrol_right = 4150
+
+[node name="Sentinel" parent="World" instance=ExtResource("14")]
+position = Vector2(4000, 518)
+reinforced = true
+shielded = true
+arena_start = 3450
+
+[node name="Projectiles" type="Node2D" parent="World"]
+z_index = 3
+
+[node name="Effects" type="Node2D" parent="World"]
+z_index = 4
+material = SubResource("AdditiveEffects")
+script = ExtResource("16")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(576, 982)
+
+[node name="Sound" type="AudioStreamPlayer" parent="."]
+
+[node name="HUDLayer" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="HUD" type="Control" parent="HUDLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("17")

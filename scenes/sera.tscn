@@ -1,0 +1,68 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/sera.gd" id="1"]
+[ext_resource type="SpriteFrames" path="res://assets/characters/sera_frames.tres" id="2"]
+
+[sub_resource type="CapsuleShape2D" id="SeraShape"]
+radius = 18.0
+height = 114.0
+
+[sub_resource type="Animation" id="Reset"]
+resource_name = "RESET"
+length = 0.001
+tracks/0/type = "value"
+tracks/0/path = NodePath("Look:scale")
+tracks/0/keys = {"times": PackedFloat32Array(0), "transitions": PackedFloat32Array(1), "update": 0, "values": [Vector2(1, 1)]}
+
+[sub_resource type="Animation" id="Catch"]
+resource_name = "catch"
+length = 0.21
+tracks/0/type = "value"
+tracks/0/path = NodePath("Look:scale")
+tracks/0/keys = {"times": PackedFloat32Array(0, 0.073, 0.12, 0.21), "transitions": PackedFloat32Array(1, 1, 1, 1), "update": 0, "values": [Vector2(1, 1), Vector2(1, 1), Vector2(1.065, 0.965), Vector2(1, 1)]}
+
+[sub_resource type="Animation" id="Boost"]
+resource_name = "boost"
+length = 0.15
+tracks/0/type = "method"
+tracks/0/path = NodePath(".")
+tracks/0/keys = {"times": PackedFloat32Array(0.058), "transitions": PackedFloat32Array(1), "values": [{"method": &"launch_boost", "args": []}]}
+tracks/1/type = "value"
+tracks/1/path = NodePath("Look:scale")
+tracks/1/keys = {"times": PackedFloat32Array(0, 0.05, 0.10, 0.15), "transitions": PackedFloat32Array(1, 1, 1, 1), "update": 0, "values": [Vector2(1, 1), Vector2(1.035, 0.97), Vector2(1.045, 1.005), Vector2(1, 1)]}
+
+[sub_resource type="Animation" id="Burst"]
+resource_name = "burst"
+length = 0.35
+tracks/0/type = "method"
+tracks/0/path = NodePath(".")
+tracks/0/keys = {"times": PackedFloat32Array(0.10), "transitions": PackedFloat32Array(1), "values": [{"method": &"emit_shockwave", "args": []}]}
+tracks/1/type = "value"
+tracks/1/path = NodePath("Look:position")
+tracks/1/keys = {"times": PackedFloat32Array(0, 0.075, 0.10, 0.16, 0.35), "transitions": PackedFloat32Array(1, 1, 1, 1, 1), "update": 0, "values": [Vector2(0, 0), Vector2(-3, 0), Vector2(5, 0), Vector2(3, 0), Vector2(0, 0)]}
+
+[sub_resource type="AnimationLibrary" id="Actions"]
+_data = {&"RESET": SubResource("Reset"), &"boost": SubResource("Boost"), &"burst": SubResource("Burst"), &"catch": SubResource("Catch")}
+
+[node name="Sera" type="CharacterBody2D"]
+collision_layer = 2
+collision_mask = 1
+floor_snap_length = 3.0
+script = ExtResource("1")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -57)
+shape = SubResource("SeraShape")
+
+[node name="Look" type="Node2D" parent="."]
+
+[node name="Sprite" type="AnimatedSprite2D" parent="Look"]
+position = Vector2(0, -72.8)
+scale = Vector2(0.7, 0.7)
+sprite_frames = ExtResource("2")
+animation = &"idle"
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {&"": SubResource("Actions")}
+callback_mode_process = 0
+callback_mode_method = 1
