@@ -56,6 +56,18 @@ func _foundry_resume() -> bool:
 	_check(current_scene.continue_button.disabled, "fresh profile has no continue")
 	_check(root.gui_get_focus_owner() == current_scene.new_button, "new game starts focused")
 	await _press(KEY_ENTER)
+	# New Game opens the chapter page; only chapter one can be started yet.
+	var title = current_scene
+	_check(title.chapter_page.visible and root.gui_get_focus_owner() == title.chapter_items[0]
+		and title.chapter_items[1].disabled and title.chapter_items[2].disabled
+		and title.showcase.chapter == 0 and not title.showcase.locked,
+		"new game opens the chapter page on chapter one with the later chapters locked")
+	title.chapter_items[2].grab_focus()
+	await process_frame
+	_check(title.showcase.chapter == 2 and title.showcase.locked, "a locked chapter shows its boss as a silhouette")
+	title.chapter_items[0].grab_focus()
+	await process_frame
+	await _press(KEY_ENTER)
 	if not await _at_scene(Store.SCENES[0]):
 		return false
 	var foundry := current_scene as Foundry
@@ -150,9 +162,13 @@ func _practice_records() -> bool:
 	var saved := FileAccess.get_file_as_string(Store.SAVE_PATH)
 	await _press(KEY_DOWN)
 	await _press(KEY_ENTER)
+	_check(current_scene.chapter_page.visible, "new game opens the chapter page")
+	await _press(KEY_ENTER)
 	_check(current_scene.confirm_new.visible, "new game asks before replacing the resume slot")
 	await _press(KEY_ESCAPE)
 	_check(not current_scene.confirm_new.visible and FileAccess.get_file_as_string(Store.SAVE_PATH) == saved, "cancelling the confirmation preserves the save")
+	await _press(KEY_ESCAPE)
+	_check(current_scene.main_page.visible and not current_scene.chapter_page.visible, "Esc leaves the chapter page for the title")
 	current_scene.practice_button.grab_focus()
 	await _press(KEY_ENTER)
 	_check(current_scene.practice_page.visible and current_scene.stage_buttons[0].text.contains("0:37.2"), "practice shows saved best time")

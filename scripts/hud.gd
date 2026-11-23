@@ -12,7 +12,6 @@ const HEAT := Color("#ff9673")
 const PLATE := Color(0.02, 0.05, 0.075, 0.86)
 const CLEAR := Color(0.02, 0.05, 0.075, 0.0)
 const EMPTY := Color("#1d313b")
-const SEGMENTS := 20
 const INTRO_TIME := 2.7
 ## The last part of the chapter card, when it fades and the stage shows through.
 const CARD_FADE := 0.7
@@ -36,6 +35,9 @@ var feedback_last_left := 0.0
 var feedback_age := 0.0
 ## Time since the stage banner began. It waits for the chapter card.
 var intro_age := 0.0
+## Which side of Sera the suit gauge sits on: -1 left, 1 right, eased between
+## when she turns so it never jumps.
+var gauge_side := 0.0
 
 @onready var level = $"../.."
 
@@ -66,6 +68,9 @@ func _process(delta: float) -> void:
 		damage_flash = 1.0
 	last_integrity = integrity
 	damage_flash = move_toward(damage_flash, 0.0, delta * 2.2)
+	# The gauge rides on Sera's back, the side away from where she faces.
+	var back: float = -level.sera.facing
+	gauge_side = back if gauge_side == 0.0 else move_toward(gauge_side, back, delta * 7.0)
 
 	_update_hints(delta)
 	complete_age = complete_age + delta if level.complete else 0.0
@@ -81,7 +86,7 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color(level.flash_tint, level.flash))
 	_draw_danger()
 	_draw_title()
-	_draw_resources()
+	_draw_suit_gauge()
 	if level.complete:
 		_draw_summary()
 	else:
@@ -126,78 +131,62 @@ func _draw_title() -> void:
 		draw_string(text_font, Vector2(x + 16, 75), parts[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, MUTED)
 
 
-func _draw_resources() -> void:
-	var energy: int = level.sera.energy
-	var integrity: int = level.sera.integrity
-	var x := size.x - 352.0
-	var plate := Rect2(x, 22, 326, 112)
-	MenuTheme.slant_fade(self, plate, CLEAR, PLATE)
-	MenuTheme.slant(self, Rect2(plate.end.x - 16, 22, 16, 112), CYAN)
-	MenuTheme.slant(self, Rect2(plate.end.x - 16, 22, 12, 112), Color(0.02, 0.05, 0.075, 0.6))
-
-	var left := x + 34.0
-	var right := plate.end.x - 30.0
-	draw_string(bold_font, Vector2(left, 45), Texts.HUD_MOMENTUM, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, CYAN)
-	var number := "%d" % roundi(shown_energy)
-	var tint := CYAN.lerp(Color.WHITE, gain_flash * 0.8)
+## Momentum and the suit's cells on Sera's back: a slim upright gauge on the
+## side away from where she faces, the dash and shockwave costs notched on its
+## outer edge and three cells over it. It follows her through the world.
+func _draw_suit_gauge() -> void:
+	if level.complete or level.exiting or level.card_left > 0.0 or level.epilogue_age >= 0.0:
+		return
+	var sera = level.sera
+	var energy: int = sera.energy
+	var integrity: int = sera.integrity
+	var feet: Vector2 = get_viewport().get_canvas_transform() * sera.global_position
+	var out := signf(gauge_side) if gauge_side != 0.0 else 1.0
+	var x := feet.x + gauge_side * 42.0
+	var bottom := feet.y - 18.0
+	var height := 92.0
+	var width := 9.0
+	var top := bottom - height
+	var per_point := height / _capacity()
+	var back := Rect2(x - width * 0.5 - 2.0, top - 2.0, width + 4.0, height + 4.0)
+	draw_rect(back, Color(0.01, 0.025, 0.035, 0.8))
+	draw_rect(Rect2(x - width * 0.5, top, width, height), EMPTY)
+	# Spent charge lingers in amber for a moment, gained charge glows white.
 	if spend_flash > 0.0:
-		tint = tint.lerp(AMBER, spend_flash * 0.6)
-	var number_width := number_font.get_string_size("/100", HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-	draw_string(number_font, Vector2(right - number_width, 58), "/100", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, DIM)
-	draw_string_outline(display_font, Vector2(right - number_width - 120, 58), number, HORIZONTAL_ALIGNMENT_RIGHT, 116, 34, 4, Color(0, 0, 0, 0.5))
-	draw_string(display_font, Vector2(right - number_width - 120, 58), number, HORIZONTAL_ALIGNMENT_RIGHT, 116, 34, tint)
-
-	# Segmented gauge. Spent charge lingers in amber, gained charge glows white.
-	var bar := Rect2(left - 6, 68, right - left + 6, 14)
-	var gap := 3.0
-	var cell := (bar.size.x - gap * (SEGMENTS - 1)) / SEGMENTS
-	var per := float(_capacity()) / SEGMENTS
-	for i in SEGMENTS:
-		var r := Rect2(bar.position.x + i * (cell + gap), bar.position.y, cell, bar.size.y)
-		MenuTheme.slant(self, r, EMPTY, 4.0)
-		if spend_flash > 0.0:
-			var ghost := clampf((spend_from - i * per) / per, 0.0, 1.0)
-			if ghost > 0.0:
-				MenuTheme.slant(self, Rect2(r.position, Vector2(r.size.x * ghost, r.size.y)), Color(AMBER, spend_flash * 0.85), 4.0)
-		var fill := clampf((shown_energy - i * per) / per, 0.0, 1.0)
-		if fill > 0.0:
-			var color := CYAN.lerp(Color.WHITE, gain_flash * 0.55)
-			if energy >= _capacity():
-				color = color.lerp(Color.WHITE, 0.25 + sin(life * 7.0) * 0.2)
-			MenuTheme.slant(self, Rect2(r.position, Vector2(r.size.x * fill, r.size.y)), color, 4.0)
+		var ghost := clampf(spend_from, 0.0, _capacity()) * per_point
+		draw_rect(Rect2(x - width * 0.5, bottom - ghost, width, ghost), Color(AMBER, spend_flash * 0.8))
+	var fill := clampf(shown_energy, 0.0, _capacity()) * per_point
+	var color := CYAN.lerp(Color.WHITE, gain_flash * 0.55)
+	if energy >= _capacity():
+		color = color.lerp(Color.WHITE, 0.25 + sin(life * 7.0) * 0.2)
+	draw_rect(Rect2(x - width * 0.5, bottom - fill, width, fill), color)
 	if gain_flash > 0.0:
-		var glow_width := bar.size.x * clampf(shown_energy / _capacity(), 0.0, 1.0)
-		draw_rect(Rect2(bar.position - Vector2(0, 4), Vector2(glow_width, bar.size.y + 8)), Color(CYAN, 0.18 * gain_flash))
-
-	# Cost ticks on the bar, then the abilities they unlock and the suit cells.
-	for cost in [level.sera.BOOST_COST, level.sera.RELEASE_COST]:
-		var px: float = bar.position.x + bar.size.x * cost / _capacity()
-		var mark := CYAN if energy >= cost else DIM
-		draw_colored_polygon(PackedVector2Array([Vector2(px - 4, bar.end.y + 8), Vector2(px + 4, bar.end.y + 8), Vector2(px, bar.end.y + 2)]), mark)
-	var chip_y := 98.0
-	var chip_x := left - 4.0
-	chip_x += _ability(Vector2(chip_x, chip_y), ["Shift"], Texts.HUD_DASH, energy >= level.sera.BOOST_COST) + 14.0
-	_ability(Vector2(chip_x, chip_y), ["RMB"], Texts.HUD_SHOCKWAVE, energy >= level.sera.RELEASE_COST)
-
-	var cell_step := 25.0
-	var cells_left: float = right - cell_step * level.sera.MAX_INTEGRITY + 3.0
-	for index in level.sera.MAX_INTEGRITY:
-		var cell_rect := Rect2(cells_left + index * cell_step, chip_y + 4.0, 22.0, 13.0)
-		var alive: bool = index < integrity
-		var color := Color("#f7b292") if alive else Color("#2c3a42")
+		draw_rect(Rect2(x - width * 0.5 - 4.0, bottom - fill - 4.0, width + 8.0, fill + 8.0), Color(CYAN, 0.2 * gain_flash))
+	for step in range(10, 100, 10):
+		var y := bottom - step * per_point
+		draw_line(Vector2(x - width * 0.5, y), Vector2(x + width * 0.5, y), Color(0.01, 0.03, 0.04, 0.55), 1.0)
+	# The two costs, notched on the outer edge and lit once there is enough.
+	for cost: int in [sera.BOOST_COST, sera.RELEASE_COST]:
+		var tip := Vector2(x + out * (width * 0.5 + 3.0), bottom - cost * per_point)
+		draw_colored_polygon(PackedVector2Array([tip, tip + Vector2(out * 7.0, -4.0), tip + Vector2(out * 7.0, 4.0)]),
+			CYAN if energy >= cost else DIM)
+	# Pressed without enough: the gauge's edge flashes amber.
+	if sera.hint_left > 0.0:
+		draw_rect(back.grow(1.5), Color(AMBER, clampf(sera.hint_left * 2.0, 0.0, 1.0)), false, 2.0)
+	var cell_width := 9.0
+	var gap := 3.0
+	var cells: int = sera.MAX_INTEGRITY
+	var row := cells * cell_width + (cells - 1) * gap
+	for index in cells:
+		var cell := Rect2(x - row * 0.5 + index * (cell_width + gap), top - 14.0, cell_width, 7.0)
+		var alive := index < integrity
+		var tint := Color("#f7b292") if alive else Color("#2c3a42")
 		if alive and integrity == 1:
-			color = color.lerp(HEAT, 0.5 + sin(life * 9.0) * 0.5)
+			tint = tint.lerp(HEAT, 0.5 + sin(life * 9.0) * 0.5)
 		if not alive and index == integrity and damage_flash > 0.0:
-			color = color.lerp(Color.WHITE, damage_flash)
-		MenuTheme.slant(self, cell_rect, color, 5.0)
-
-
-func _ability(origin: Vector2, tokens: Array, label: String, ready_now: bool) -> float:
-	var alpha := 1.0 if ready_now else 0.38
-	var width := MenuTheme.combo(self, origin, tokens, alpha, 12)
-	draw_string(text_font, Vector2(origin.x + width + 6.0, origin.y + 16.0), label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
-		Color(CYAN if ready_now else MUTED, alpha))
-	return width + 6.0 + text_font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+			tint = tint.lerp(Color.WHITE, damage_flash)
+		draw_rect(cell.grow(1.5), Color(0.01, 0.025, 0.035, 0.8))
+		draw_rect(cell, tint)
 
 
 func _capacity() -> float:

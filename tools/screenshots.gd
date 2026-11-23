@@ -30,8 +30,42 @@ func _run() -> void:
 		await _spine()
 	if _wanted("wheel"):
 		await _wheel()
+	if _wanted("newgame"):
+		await _new_game_page()
+	if _wanted("gauge"):
+		await _gauge()
 	paused = false
 	quit(0)
+
+
+## The New Game page with each chapter's boss on show, locked ones included.
+func _new_game_page() -> void:
+	paused = false
+	change_scene_to_file("res://scenes/title.tscn")
+	await scene_changed
+	await _wait(1.2)
+	var title := current_scene
+	title._show_chapters()
+	for chapter in title.chapter_items.size():
+		title.chapter_items[chapter].grab_focus()
+		# Each boss both ways, whatever the save says: open, then locked.
+		for locked in [false, true]:
+			title.showcase.show_chapter(chapter, locked)
+			await _wait(1.6)
+			await _shot("newgame_chapter%d%s" % [chapter + 1, "_locked" if locked else ""])
+
+
+## The suit gauge on Sera's back, facing right and then left with a cell lost.
+func _gauge() -> void:
+	var level := await _open("res://scenes/cargo_deck.tscn")
+	_place(level, Vector2(700.0, 519.0), 56)
+	await _wait(0.8)
+	await _shot("gauge_right")
+	level.sera.facing = -1.0
+	level.sera.integrity = 2
+	level.sera.energy = 30
+	await _wait(0.8)
+	await _shot("gauge_left")
 
 
 func _wanted(group: String) -> bool:

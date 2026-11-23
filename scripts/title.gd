@@ -4,6 +4,7 @@ const CampaignStore = preload("res://scripts/campaign.gd")
 const MenuTheme = preload("res://scripts/menu_theme.gd")
 const MenuItem = preload("res://scripts/menu_item.gd")
 const StageCard = preload("res://scripts/stage_card.gd")
+const BossShowcase = preload("res://scripts/boss_showcase.gd")
 const Texts = preload("res://texts.gd")
 const Audio = preload("res://scripts/game_audio.gd")
 const LOGO := preload("res://assets/environment/sera_logo.png")
@@ -43,6 +44,8 @@ var chapter_tabs: Array[MenuItem] = []
 var chapter_page: ColorRect
 var chapter_header: Control
 var chapter_items: Array[MenuItem] = []
+## The focused chapter's boss, idling on the right of the New Game page.
+var showcase: BossShowcase
 var pending_chapter := 0
 var ui_voices: Array[AudioStreamPlayer]
 var clock := 0.0
@@ -429,35 +432,45 @@ func _open_practice_chapter(chapter: int) -> void:
 
 func _build_chapters() -> void:
 	chapter_page = ColorRect.new()
-	chapter_page.color = Color(0.008, 0.02, 0.032, 0.82)
+	chapter_page.color = Color(0.008, 0.02, 0.032, 0.9)
 	add_child(chapter_page)
 	chapter_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# The boss of the focused chapter fills the right side of the page.
+	showcase = BossShowcase.new()
+	chapter_page.add_child(showcase)
+	showcase.anchor_left = 0.42
+	showcase.anchor_right = 1.0
+	showcase.anchor_bottom = 1.0
 	chapter_header = Control.new()
 	chapter_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chapter_page.add_child(chapter_header)
 	chapter_header.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	chapter_header.draw.connect(_draw_chapter_header)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override(&"separation", 8)
+	column.add_theme_constant_override(&"separation", 10)
 	chapter_page.add_child(column)
-	column.anchor_left = 0.095
-	column.anchor_right = 0.58
-	column.offset_top = 196
+	column.anchor_left = 0.075
+	column.anchor_right = 0.4
+	column.offset_top = 150 if Texts.CHAPTER_SELECT_HEADING.is_empty() else 196
 	for chapter in Texts.CHAPTERS.size():
 		var item := MenuItem.new()
 		item.text = Texts.chapter_label(chapter).replace("  ·  ", " · ")
 		item.index_label = "%02d" % (chapter + 1)
 		item.font_size = 21
 		item.compact = true
-		item.custom_minimum_size.y = 52
+		item.custom_minimum_size.y = 58
 		column.add_child(item)
 		item.pressed.connect(_choose_chapter.bind(chapter))
 		item.pressed.connect(_on_menu_pick)
 		item.focus_entered.connect(_on_menu_focus)
+		item.focus_entered.connect(_on_chapter_focus.bind(chapter))
+		item.mouse_entered.connect(_on_chapter_focus.bind(chapter))
 		chapter_items.append(item)
 	chapter_page.hide()
 
 
+## New Game always opens here: the chapters a new game can start are lit, the
+## rest are locked and their bosses shown as silhouettes.
 func _show_chapters() -> void:
 	main_page.hide()
 	chapter_page.show()
@@ -476,6 +489,14 @@ func _show_chapters() -> void:
 	chapter_page.modulate.a = 0.0
 	create_tween().tween_property(chapter_page, "modulate:a", 1.0, 0.18)
 	chapter_items[startable[-1]].grab_focus()
+	_on_chapter_focus(startable[-1])
+
+
+func _on_chapter_focus(chapter: int) -> void:
+	for i in chapter_items.size():
+		# A locked chapter cannot light up, so it is marked as the one being looked at.
+		chapter_items[i].selected = i == chapter and chapter_items[i].disabled
+	showcase.show_chapter(chapter, chapter_items[chapter].disabled)
 
 
 func _close_chapters() -> void:
@@ -503,8 +524,10 @@ func _draw_chapter_header() -> void:
 	var left := 110.0
 	MenuTheme.slant(chapter_header, Rect2(left, 62, 30, 4), MenuTheme.ACCENT, 3.0)
 	MenuTheme.spaced(chapter_header, MenuTheme.display_font(600), Vector2(left + 40, 70), Texts.CHAPTER_SELECT_EYEBROW, 14, MenuTheme.ACCENT, 4.0)
-	chapter_header.draw_string(MenuTheme.text_font(700), Vector2(left, 116), Texts.CHAPTER_SELECT_HEADING, HORIZONTAL_ALIGNMENT_LEFT, -1, 36, MenuTheme.TEXT)
-	chapter_header.draw_string(MenuTheme.text_font(), Vector2(left, 144), Texts.CHAPTER_SELECT_NOTE, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, MenuTheme.MUTED)
+	if not Texts.CHAPTER_SELECT_HEADING.is_empty():
+		chapter_header.draw_string(MenuTheme.text_font(700), Vector2(left, 116), Texts.CHAPTER_SELECT_HEADING, HORIZONTAL_ALIGNMENT_LEFT, -1, 36, MenuTheme.TEXT)
+	if not Texts.CHAPTER_SELECT_NOTE.is_empty():
+		chapter_header.draw_string(MenuTheme.text_font(), Vector2(left, 144), Texts.CHAPTER_SELECT_NOTE, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, MenuTheme.MUTED)
 	var y := size.y - 44.0
 	var x := left
 	x += MenuTheme.keycap(chapter_header, Vector2(x, y), "↑↓", Texts.KEY_SELECT) + 22.0
@@ -601,12 +624,9 @@ func _draw_practice_header() -> void:
 	MenuTheme.keycap(practice_header, Vector2(x, y), "Esc", Texts.PRACTICE_BACK)
 
 
-## A new game starts chapter one, or asks which chapter once a later one is open.
+## A new game always opens the chapter page, with its bosses on show.
 func _confirm_start() -> void:
-	if campaign.startable_chapters().size() > 1:
-		_show_chapters()
-		return
-	_choose_chapter(0)
+	_show_chapters()
 
 
 func _new_game() -> void:

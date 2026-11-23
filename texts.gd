@@ -12,6 +12,8 @@ extends RefCounted
 #   · {숫자} {스테이지} 처럼 중괄호로 싸인 낱말은 게임이 값을 채워 넣는 자리입니다.
 #     문장 안에서 자리를 옮기거나 빼도 되지만, 중괄호 안의 낱말은 바꾸지 마세요.
 #   · 문장 안에서 줄을 바꾸려면 \n 을 씁니다.
+#   · 따옴표 안을 비우면("") 그 문구는 화면에 나오지 않습니다. 비워 둔 설명문은
+#     다시 써 넣으면 그 자리에 나옵니다.
 #   · 스테이지 이름과 구간 이름에는 / 를 쓰지 마세요. 화면 왼쪽 위 표시가 / 로
 #     이름을 나눕니다.
 #   · 대괄호 안에 문장이 여러 개인 말풍선은 한 줄에 한 문장입니다. 첫 문장은
@@ -399,7 +401,7 @@ const KEY_PAUSE_IN_PLAY := "플레이 중 일시 정지"
 # 스테이지 연습 화면.
 const PRACTICE_EYEBROW := "STAGE SELECT"
 const PRACTICE_HEADING := "스테이지 연습"
-const PRACTICE_NOTE := "운동량 0에서 시작합니다. 클리어한 연습 기록은 다음 도전과 비교할 수 있습니다."
+const PRACTICE_NOTE := ""
 const PRACTICE_DELTA := "{차이}초"
 const PRACTICE_KEY_STAGES := "스테이지 · 막 넘기기"
 const PRACTICE_KEY_START := "시작"
@@ -420,17 +422,19 @@ const CHAPTER_CARD := "CHAPTER {번호}"
 const ACT_LABEL := "ACT {막}  ·  {이름}"
 # 아직 캠페인에서 들어가 보지 않은 스테이지의 카드. 1챕터는 처음부터 열려 있습니다.
 const CARD_LOCKED := "잠김"
-const CARD_LOCKED_NOTE := "캠페인에서 도달하면 열립니다"
+const CARD_LOCKED_NOTE := ""
 # 연습 화면 아래 키 안내. 위 방향키로 챕터 탭에 올라가 챕터를 바꿉니다.
 const PRACTICE_KEY_CHAPTERS := "챕터 바꾸기"
 
-# 챕터 선택. 챕터를 하나 깨면 새 게임에서 다음 챕터부터 바로 시작할 수 있습니다.
+# 챕터 선택. 새 게임을 누르면 뜨고, 오른쪽에 고른 챕터의 보스가 나옵니다.
+# 깬 챕터의 다음 챕터까지 고를 수 있고, 그 뒤 챕터는 잠김(보스는 실루엣)입니다.
+# HEADING은 큰 제목, NOTE는 그 아래 설명입니다. 비워 두면 나오지 않습니다.
 const CHAPTER_SELECT_EYEBROW := "NEW GAME"
-const CHAPTER_SELECT_HEADING := "어디서 시작할까요"
-const CHAPTER_SELECT_NOTE := "깬 챕터의 다음 챕터부터 바로 시작할 수 있습니다. 운동량 0에서 시작합니다."
-# 챕터 버튼 오른쪽의 작은 글씨. {스테이지}는 그 챕터의 첫 스테이지 이름.
-const CHAPTER_SELECT_FROM := "{스테이지}부터"
-const CHAPTER_SELECT_CLEARED := "클리어  ·  {스테이지}부터"
+const CHAPTER_SELECT_HEADING := ""
+const CHAPTER_SELECT_NOTE := ""
+# 챕터 버튼 오른쪽의 작은 글씨. {스테이지}를 넣으면 그 챕터의 첫 스테이지 이름이 나옵니다.
+const CHAPTER_SELECT_FROM := ""
+const CHAPTER_SELECT_CLEARED := "클리어"
 
 
 # ------------------------------------------------------------------------------
@@ -441,7 +445,7 @@ const PAUSE_HEADING := "일시 정지"
 const PAUSE_CONTINUE := "계속하기"
 const PAUSE_RETRY := "체크포인트부터"
 const PAUSE_TO_TITLE := "타이틀로"
-const PAUSE_HELP := "타이틀에서 마지막 체크포인트로 이어갈 수 있습니다."
+const PAUSE_HELP := ""
 # 제목 아래의 진행 기록.
 const PAUSE_DETAIL := "{시간}   ·   정밀 흡수 {정밀}   ·   재시도 {재시도}"
 # 조작표. 위에서부터 A/D, Space, 좌클릭, Shift, W+Shift, 우클릭, W+우클릭, E, R 옆의 설명입니다.
@@ -462,7 +466,7 @@ const CONTROLS := [
 const CONTROLS_AIR_ABSORB := "뛰어서 공중에서 흡수"
 const CONTROLS_DOWN_RELEASE := "발밑으로 충격파 · 운동량 50"
 # 3챕터부터 더해지는 줄. 키 그림은 좌클릭+우클릭입니다.
-const CONTROLS_REFLECT := "막는 중 탄이 닿기 직전 · 반사 (W를 누르면 대각선 위)"
+const CONTROLS_REFLECT := "막는 중 우클릭 · 반사"
 
 
 # ------------------------------------------------------------------------------
@@ -474,10 +478,6 @@ const HUD_STAGE_UNLISTED := "STAGE"
 const HUD_PRACTICE := "PRACTICE"
 # 시작 배너에서 체크포인트부터 이어 시작할 때의 부제.
 const HUD_FROM_CHECKPOINT := "체크포인트  ·  {구간}"
-# 오른쪽 위 운동량 표시.
-const HUD_MOMENTUM := "운동량"
-const HUD_DASH := "대시"
-const HUD_SHOCKWAVE := "충격파"
 # 말풍선의 이름표.
 const HUD_SPEAKER := "세라"
 # 운동량이 모자란데 대시나 충격파를 눌렀을 때.
@@ -520,7 +520,7 @@ const NOTE_SWEEP_EVADED := "바닥 충격파 회피"
 const NOTE_SUIT_DAMAGED := "슈트 손상"
 const NOTE_SUIT_DOWN := "슈트 손상 · 복귀 중"
 # 차폐된 가드나 보스에게 충격파가 튕겼을 때.
-const NOTE_SHIELDED := "차폐 중 · 위쪽 릴레이를 맞히세요"
+const NOTE_SHIELDED := "차폐 중"
 const NOTE_ARMOR_BROKEN := "장갑 파손"
 const NOTE_EXIT_OPEN := "출구 개방"
 # 보스의 코어를 하나 부쉈을 때.
@@ -603,7 +603,7 @@ const REACTOR_NOTE_WAKE := "노심 수호기 기동"
 # 탄을 받아 코어가 열렸을 때. 뒤에 얻은 양이 붙습니다.
 const REACTOR_NOTE_CORE_OPEN := "흡수 성공 · 코어 개방"
 const REACTOR_NOTE_CORE_OPEN_PRECISE := "정밀 흡수 · 코어 개방"
-const REACTOR_NOTE_CORE_SHUT := "코어 밀폐 · 파란 탄을 받아 여세요"
+const REACTOR_NOTE_CORE_SHUT := "코어 밀폐"
 const REACTOR_NOTE_STOPPED := "동력로 정지"
 const REACTOR_NOTE_PRESS_EVADED := "낙하 프레스 회피"
 # 보스 체력 표시 오른쪽의 상태.
@@ -624,13 +624,13 @@ const SECTOR_NOTE_PASSAGE := "통로 개방"
 const SECTOR_NOTE_STEAM_CUT := "증기 차단"
 const SECTOR_NOTE_RAM_BROKEN := "돌격 기체 파괴"
 # 기절하지 않은 돌격 기체에 충격파가 튕겼을 때.
-const SECTOR_NOTE_RAM_ARMOR := "전면 장갑 · 돌진을 받아내 멈추세요"
+const SECTOR_NOTE_RAM_ARMOR := "전면 장갑"
 # 돌진을 받아냈을 때. 뒤에 얻은 양이 붙습니다.
 const SECTOR_NOTE_RAM_CAUGHT := "돌진 흡수 · 기체 정지"
 const SECTOR_NOTE_RAM_CAUGHT_PRECISE := "정밀 흡수 · 돌진 정지"
 const SECTOR_NOTE_DRONE_DOWN := "드론 격추"
 const SECTOR_NOTE_RELAY := "릴레이 연결"
-const SECTOR_NOTE_TIMED_RELAY := "시한 릴레이 작동 · 서두르세요"
+const SECTOR_NOTE_TIMED_RELAY := "시한 릴레이 작동"
 
 # 돌격 기체가 조준하거나 돌진해 올 때. [좌클릭]
 const SECTOR_HINT_RAM_CATCH := ["마주 보고 받아내자. 파란 불이 정밀 흡수 신호야.", "길게 누르면 흡수 · 파란 불에 맞춰 누르면 정밀 흡수"]
@@ -678,7 +678,7 @@ const YARD_NOTE_WAKE := "갠트리 기동"
 # 강재를 받았을 때. 뒤에 얻은 양이 붙습니다.
 const YARD_NOTE_CAUGHT := "강재 흡수 · 코어 노출"
 const YARD_NOTE_SLAB_EVADED := "과적 슬래브 회피"
-const YARD_NOTE_CORE_SHUT := "집게 잠김 · 파란 강재를 받아 여세요"
+const YARD_NOTE_CORE_SHUT := "집게 잠김"
 const YARD_NOTE_STOPPED := "갠트리 정지"
 # 보스 체력 표시 오른쪽의 상태.
 const YARD_STATUS_OPEN := "코어 노출"
@@ -695,7 +695,7 @@ const YARD_HINT_CORE := ["집게가 비었어! 옆으로 나와서 대각선으�
 #  13. 스테이지 9 · 대관성륜 (최종 보스 포어맨)
 # ------------------------------------------------------------------------------
 const WHEEL_NOTE_WAKE := "포어맨 기동"
-const WHEEL_NOTE_SHIELD_CUT := "차폐 해제 · 가슴 코어를 노리세요"
+const WHEEL_NOTE_SHIELD_CUT := "차폐 해제"
 # 돌진을 받아냈을 때. 뒤에 얻은 양이 붙습니다.
 const WHEEL_NOTE_CHARGE_CAUGHT := "돌진 흡수 · 포어맨 정지"
 const WHEEL_NOTE_CHARGE_CAUGHT_PRECISE := "정밀 흡수 · 포어맨 정지"
@@ -704,7 +704,7 @@ const WHEEL_NOTE_LOAD_CAUGHT := "관성 흡수 · 코어 노출"
 const WHEEL_NOTE_CORE_SHUT := "코어 밀폐"
 # 마지막 장면.
 const WHEEL_NOTE_FINALE := "대관성륜의 운동량이 슈트로 쏟아진다"
-const WHEEL_NOTE_WRONG_WAY := "앞이 아니라 하늘로 · W를 누른 채 방출"
+const WHEEL_NOTE_WRONG_WAY := "앞이 아니라 하늘로"
 const WHEEL_NOTE_RELEASED := "방출 완료 · 대관성륜 정지"
 # 보스 체력 표시 오른쪽의 상태.
 const WHEEL_STATUS_SHIELDED := "차폐 중"
@@ -737,7 +737,7 @@ const WHEEL_HINT_FINALE := ["바퀴의 힘이 전부 나한테 왔어. 받은 �
 # ------------------------------------------------------------------------------
 #  2챕터부터는 1챕터에서 배운 조작은 다시 안내하지 않고, 처음 나오는 것만
 #  한 번씩 알려 줍니다.
-const NOTE_FRONT_SHIELD := "방패에 막힘 · 위나 뒤에서 노리세요"
+const NOTE_FRONT_SHIELD := "방패에 막힘"
 const SECTOR_NOTE_TURRET_DOWN := "포대 파괴"
 const SECTOR_NOTE_BOMBER_DOWN := "투하기 격추"
 const SECTOR_NOTE_HATCH := "해치 파괴"
@@ -775,7 +775,7 @@ const SECTOR_HINT_BOMBER_SHOT := ["옆으로 비켜났어. 지금 대각선으�
 const TRAIN_NOTE_WAKE := "장갑 열차 기동"
 # 관성탄을 공중에서 받았을 때.
 const TRAIN_NOTE_SHELL_CAUGHT := "관성탄 흡수 · 포문 개방"
-const TRAIN_NOTE_CORE_SHUT := "포문 잠김 · 관성탄을 공중에서 받으세요"
+const TRAIN_NOTE_CORE_SHUT := "포문 잠김"
 const TRAIN_NOTE_STOPPED := "장갑 열차 정지"
 # 보스 체력 표시 오른쪽의 상태.
 const TRAIN_STATUS_SHUT := "포문 잠김"
@@ -793,7 +793,7 @@ const TRAIN_HINT_CORE := ["포문이 열렸어! 앞쪽 코어야.", "다가가�
 const CARRIER_NOTE_WAKE := "캐리어 기동"
 const CARRIER_NOTE_CAUGHT := "컨테이너 흡수 · 지붕 개방"
 const CARRIER_NOTE_SLAB_EVADED := "과적 컨테이너 회피"
-const CARRIER_NOTE_CORE_SHUT := "지붕 잠김 · 파란 컨테이너를 받으세요"
+const CARRIER_NOTE_CORE_SHUT := "지붕 잠김"
 const CARRIER_NOTE_SHAKEN := "흔들기 · 지붕에서 떨어짐"
 const CARRIER_NOTE_STOPPED := "캐리어 정지"
 const CARRIER_STATUS_SHUT := "지붕 잠김"
@@ -814,9 +814,9 @@ const CARRIER_HINT_STOMP := ["코어 바로 위야. 내리꽂자!", "같이 눌�
 # ------------------------------------------------------------------------------
 const DISPATCHER_NOTE_WAKE := "디스패처 기동"
 const DISPATCHER_NOTE_SHELL := "관성탄 흡수 · 신호 차폐 해제"
-const DISPATCHER_NOTE_SHIELDED := "신호 차폐 · 관성탄을 공중에서 받으세요"
+const DISPATCHER_NOTE_SHIELDED := "신호 차폐"
 const DISPATCHER_NOTE_CAUGHT := "컨테이너 흡수 · 지붕 개방"
-const DISPATCHER_NOTE_ROOF_SHUT := "지붕 잠김 · 파란 컨테이너를 받으세요"
+const DISPATCHER_NOTE_ROOF_SHUT := "지붕 잠김"
 const DISPATCHER_NOTE_WIND := "바람이 바뀐다"
 const DISPATCHER_NOTE_STOPPED := "디스패처 정지"
 const DISPATCHER_STATUS_SIGNAL := "신호 차폐"
@@ -842,14 +842,14 @@ const DISPATCHER_HINT_STOMP := ["지붕으로 튀어 올라서 내리꽂자.", "
 # 탄을 반사했을 때.
 const NOTE_REFLECT := "반사"
 const NOTE_REFLECT_AIR := "공중 반사"
-const SECTOR_NOTE_MIRROR := "거울에 반사됨 · 탄을 되돌려 맞히세요"
+const SECTOR_NOTE_MIRROR := "거울에 반사됨"
 const SECTOR_NOTE_MIRROR_DOWN := "거울 포대 파괴"
-const SECTOR_NOTE_LAUNCHER_ARMOR := "장갑 · 추적탄을 반사해 맞히세요"
+const SECTOR_NOTE_LAUNCHER_ARMOR := "장갑"
 const SECTOR_NOTE_LAUNCHER_DOWN := "발사기 파괴"
-const SECTOR_NOTE_ABSORBED := "흡수됨 · 되돌아오는 큰 탄을 반사하세요"
+const SECTOR_NOTE_ABSORBED := "흡수됨"
 const SECTOR_NOTE_ABSORBER_DOWN := "흡수 경비 쓰러짐"
 const SECTOR_NOTE_TARGET := "표적 명중"
-const SECTOR_NOTE_TARGET_SHOCK := "표적은 반사한 탄에만 반응합니다"
+const SECTOR_NOTE_TARGET_SHOCK := ""
 # 추적탄이나 화물 통을 받았을 때. 뒤에 얻은 양이 붙습니다.
 const SECTOR_NOTE_MISSILE := "추적탄 흡수"
 const SECTOR_NOTE_BARREL := "화물 통 흡수"
@@ -879,11 +879,11 @@ const SECTOR_HINT_LOW_GRAVITY := ["중력이 약해. 높이 뛸 수 있고, 탄�
 # ------------------------------------------------------------------------------
 const HELM_NOTE_WAKE := "키잡이 기동"
 # 충격파가 거울 함교에 맞았을 때.
-const HELM_NOTE_MIRROR := "거울 함교 · 충격파가 되돌아옵니다"
+const HELM_NOTE_MIRROR := "거울 함교"
 # 포문이 닫혀 있을 때 되돌린 탄이 맞았을 때.
-const HELM_NOTE_SHUT := "포문 닫힘 · 포문이 열렸을 때 되돌리세요"
+const HELM_NOTE_SHUT := "포문 닫힘"
 # 키가 없는 곳에 되돌린 탄이 맞았을 때.
-const HELM_NOTE_ARMOR := "장갑 · 키가 있는 창을 노리세요"
+const HELM_NOTE_ARMOR := "장갑"
 const HELM_NOTE_STOPPED := "키잡이 정지"
 const HELM_STATUS_SHUT := "거울 차폐"
 const HELM_STATUS_OPEN := "포문 개방"
@@ -898,8 +898,8 @@ const HELM_HINT_HIGH := ["키가 위 창으로 올라갔어. 표식에서 위로
 #  20. 스테이지 3-6 · 시추 리그 (보스)
 # ------------------------------------------------------------------------------
 const RIG_NOTE_WAKE := "시추 리그 기동"
-const RIG_NOTE_POD_SHUT := "포드 잠김 · 접시에 쏘고 돌아오는 큰 탄을 반사하세요"
-const RIG_NOTE_DRANK := "흡수 접시 · 큰 탄이 돌아옵니다"
+const RIG_NOTE_POD_SHUT := "포드 잠김"
+const RIG_NOTE_DRANK := "흡수 접시"
 const RIG_NOTE_STOPPED := "시추 리그 정지"
 const RIG_STATUS_POD := "포드 개방"
 const RIG_STATUS_DISH := "흡수 접시"
@@ -917,11 +917,11 @@ const RIG_HINT_DRILL := ["굴착기가 내려찍어! 붉은 파동을 뛰어넘�
 # ------------------------------------------------------------------------------
 const ECHO_NOTE_WAKE := "에코 기동"
 # 에코가 세라의 충격파를 받았을 때.
-const ECHO_NOTE_ABSORBED := "에코가 흡수 · 돌아오는 탄을 반사하세요"
+const ECHO_NOTE_ABSORBED := "에코가 흡수"
 # 되돌린 탄이 에코에게 맞았을 때.
-const ECHO_NOTE_STAGGER := "균형 붕괴 · 지금 충격파"
+const ECHO_NOTE_STAGGER := "균형 붕괴"
 # 3페이즈에서 에코가 되돌린 탄을 한 번 더 되받아쳤을 때.
-const ECHO_NOTE_RALLY := "에코가 되받아쳤다 · 한 번 더 반사하세요"
+const ECHO_NOTE_RALLY := "에코가 되받아쳤다"
 const ECHO_NOTE_STOPPED := "에코 정지"
 const ECHO_STATUS_GUARD := "흡수 자세"
 const ECHO_STATUS_OPEN := "균형 붕괴"
