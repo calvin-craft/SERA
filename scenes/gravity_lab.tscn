@@ -1,0 +1,219 @@
+[gd_scene load_steps=24 format=3]
+
+[ext_resource type="Script" path="res://scripts/gravity_lab.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/skyline.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/sector_deck.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/low_gravity.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/reflect_target.gd" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/bulkhead.tscn" id="6"]
+[ext_resource type="Script" path="res://scripts/turret.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/launcher.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/absorber.gd" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/sera.tscn" id="10"]
+[ext_resource type="Script" path="res://scripts/effects.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="12"]
+
+[sub_resource type="RectangleShape2D" id="Deck0"]
+size = Vector2(1300, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck1"]
+size = Vector2(1200, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck2"]
+size = Vector2(180, 30)
+
+[sub_resource type="RectangleShape2D" id="Deck3"]
+size = Vector2(180, 30)
+
+[sub_resource type="RectangleShape2D" id="Deck4"]
+size = Vector2(180, 30)
+
+[sub_resource type="RectangleShape2D" id="Deck5"]
+size = Vector2(1300, 60)
+
+[sub_resource type="RectangleShape2D" id="Deck6"]
+size = Vector2(220, 60)
+
+[sub_resource type="RectangleShape2D" id="Deck7"]
+size = Vector2(260, 60)
+
+[sub_resource type="RectangleShape2D" id="Deck8"]
+size = Vector2(540, 60)
+
+[sub_resource type="RectangleShape2D" id="Deck9"]
+size = Vector2(1600, 116)
+
+[sub_resource type="CanvasItemMaterial" id="AdditiveEffects"]
+blend_mode = 1
+
+[node name="GravityLab" type="Node2D"]
+process_mode = 3
+script = ExtResource("1")
+next_scene = "res://scenes/echo_chamber.tscn"
+carry_charge = true
+horizontal_bounds = Vector2(-70, 6700)
+fall_limit = 900
+camera_x = Vector2(576, 6190)
+camera_y = Vector2(-18, 342)
+
+[node name="FarBackground" type="CanvasLayer" parent="."]
+layer = -2
+
+[node name="Backdrop" type="Sprite2D" parent="FarBackground"]
+position = Vector2(-40, -30)
+scale = Vector2(0.82, 0.82)
+centered = false
+
+[node name="Skyline" type="Node2D" parent="FarBackground"]
+script = ExtResource("2")
+theme_name = "lab"
+
+[node name="World" type="Node2D" parent="."]
+process_mode = 1
+
+[node name="DeckArt" type="Node2D" parent="World"]
+script = ExtResource("3")
+iron = Color(0.13, 0.12, 0.18, 1)
+edge = Color(0.62, 0.58, 0.74, 1)
+seam = Color(0.27, 0.25, 0.34, 1)
+dark = Color(0.05, 0.05, 0.09, 1)
+accent = Color(1.0, 0.82, 0.55, 1)
+live = Color(0.72, 0.62, 1.0, 1)
+
+[node name="Walkways" type="StaticBody2D" parent="World"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Airlock" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(550, 578)
+shape = SubResource("Deck0")
+
+[node name="LabFloor" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(1800, 578)
+shape = SubResource("Deck1")
+
+[node name="StepA" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(1390, 415)
+shape = SubResource("Deck2")
+
+[node name="StepB" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(1670, 295)
+shape = SubResource("Deck3")
+
+[node name="StepC" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(1950, 175)
+shape = SubResource("Deck4")
+
+[node name="Ledge" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(2750, 190)
+shape = SubResource("Deck5")
+
+[node name="PadB" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(3770, 190)
+shape = SubResource("Deck6")
+
+[node name="PadC" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(4270, 190)
+shape = SubResource("Deck7")
+
+[node name="LedgeD" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(4930, 190)
+shape = SubResource("Deck8")
+
+[node name="FloorE" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(6000, 578)
+shape = SubResource("Deck9")
+
+[node name="Checkpoints" type="Node2D" parent="World"]
+
+[node name="Checkpoint1" type="Marker2D" parent="World/Checkpoints"]
+position = Vector2(2200, 159)
+
+[node name="Checkpoint2" type="Marker2D" parent="World/Checkpoints"]
+position = Vector2(4750, 159)
+
+[node name="AimPads" type="Node2D" parent="World"]
+
+[node name="AimPad1" type="Marker2D" parent="World/AimPads"]
+position = Vector2(5560, 520)
+
+[node name="Exit" type="Marker2D" parent="World"]
+position = Vector2(6600, 520)
+
+[node name="FieldA" type="Node2D" parent="World"]
+position = Vector2(1200, 520)
+script = ExtResource("4")
+width = 1200
+height = 700
+
+[node name="FieldB" type="Node2D" parent="World"]
+position = Vector2(3300, 160)
+script = ExtResource("4")
+width = 1400
+height = 500
+on_time = 3.2
+off_time = 1.8
+
+[node name="FieldC" type="Node2D" parent="World"]
+position = Vector2(5300, 520)
+script = ExtResource("4")
+width = 1300
+height = 600
+
+[node name="TargetE" type="Node2D" parent="World"]
+position = Vector2(5780, 250)
+script = ExtResource("5")
+post = 270
+
+[node name="ExitGate" parent="World" instance=ExtResource("6")]
+position = Vector2(6450, 520)
+
+[node name="Sera" parent="World" instance=ExtResource("10")]
+position = Vector2(150, 519)
+collision_mask = 5
+
+[node name="MirrorA" type="Node2D" parent="World"]
+position = Vector2(3200, 160)
+script = ExtResource("7")
+facing = -1
+muzzle_height = 85
+burst = 2
+rest = 2
+reach = 700
+mirror = true
+
+[node name="LauncherB" type="Node2D" parent="World"]
+position = Vector2(4300, 160)
+script = ExtResource("8")
+facing = -1
+rest = 2.8
+reach = 900
+
+[node name="AbsorberE" type="Node2D" parent="World"]
+position = Vector2(5900, 520)
+script = ExtResource("9")
+arena_start = 5250
+
+[node name="Projectiles" type="Node2D" parent="World"]
+z_index = 3
+
+[node name="Effects" type="Node2D" parent="World"]
+z_index = 4
+material = SubResource("AdditiveEffects")
+script = ExtResource("11")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(576, 342)
+
+[node name="Sound" type="AudioStreamPlayer" parent="."]
+
+[node name="HUDLayer" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="HUD" type="Control" parent="HUDLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("12")

@@ -12,6 +12,9 @@ const HEAT := Color("#ff7647")
 @export var reinforced := false
 @export var arena_start := 1236.0
 @export var shielded := false
+## 방패 경비: a tower shield on the side it faces turns shockwaves from the
+## front. One fired down on it from above, or into its back, gets through.
+@export var front_guard := false
 
 var target: Sera
 var knocked_out := false
@@ -44,6 +47,10 @@ func _ready() -> void:
 	if reinforced:
 		sprite_size = 0.514
 		armor_tint = Color("#f0cdb5")
+	if front_guard:
+		# The tower shield is drawn by this node, so the figure goes behind it.
+		pivot.z_index = -1
+		armor_tint = armor_tint * Color("#d4dde0")
 	reset_guard()
 
 
@@ -223,6 +230,8 @@ func _draw() -> void:
 		return
 	if shielded:
 		_draw_shield()
+	if front_guard:
+		_draw_front_shield()
 	var height := -191.0 if reinforced else -162.0
 	var plate_color := Color("#ffad82") if reinforced else ICE
 	for index in (2 if reinforced else 1):
@@ -241,6 +250,24 @@ func _draw() -> void:
 	draw_circle(point, 9.0 + 9.0 * progress, Color(tint, 0.21), true, -1, true)
 	draw_arc(point, 19.0 - 9.0 * progress, 0.0, TAU, 30, visible_tint, 2.0, true)
 	draw_circle(point, 3.0 + progress * 3.0, Color("#fff9e5"), true, -1, true)
+
+
+## True when a shockwave travelling along `wave` would meet the tower shield.
+func shield_blocks(wave: Vector2) -> bool:
+	return front_guard and not knocked_out and wave.y < 0.5 and wave.x != 0.0 and signf(wave.x) == -attack_direction
+
+
+func _draw_front_shield() -> void:
+	var side := attack_direction
+	var glow := 0.25 + shield_flash * 2.4
+	var center := side * 52.0
+	var face := Rect2(center - 12.0, -158.0, 24.0, 150.0)
+	draw_rect(face.grow(3.0), Color("#111b20"))
+	draw_rect(face, Color("#3b4a50"))
+	draw_rect(Rect2(face.position.x, face.position.y, face.size.x, 5.0), Color("#9aaab0"))
+	for y in [-138.0, -84.0, -30.0]:
+		draw_circle(Vector2(center, y), 3.0, Color("#9aaab0"))
+	draw_line(Vector2(center + side * 13.0, -152.0), Vector2(center + side * 13.0, -14.0), Color(HEAT, glow), 2.0)
 
 
 func _draw_shield() -> void:

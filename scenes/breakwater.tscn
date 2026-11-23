@@ -1,0 +1,219 @@
+[gd_scene load_steps=19 format=3]
+
+[ext_resource type="Script" path="res://scripts/breakwater.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/skyline.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/sector_deck.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/gust.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/freight_train.gd" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/bulkhead.tscn" id="6"]
+[ext_resource type="Script" path="res://scripts/turret.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/bomber.gd" id="8"]
+[ext_resource type="PackedScene" path="res://scenes/warden.tscn" id="9"]
+[ext_resource type="PackedScene" path="res://scenes/sera.tscn" id="10"]
+[ext_resource type="Script" path="res://scripts/effects.gd" id="11"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="12"]
+
+[sub_resource type="RectangleShape2D" id="Deck0"]
+size = Vector2(900, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck1"]
+size = Vector2(700, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck2"]
+size = Vector2(1300, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck3"]
+size = Vector2(1500, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck4"]
+size = Vector2(1450, 116)
+
+[sub_resource type="CanvasItemMaterial" id="AdditiveEffects"]
+blend_mode = 1
+
+[node name="Breakwater" type="Node2D"]
+process_mode = 3
+script = ExtResource("1")
+next_scene = "res://scenes/harbor_tower.tscn"
+carry_charge = true
+horizontal_bounds = Vector2(-70, 7050)
+fall_limit = 813
+camera_x = Vector2(576, 6540)
+camera_y = Vector2(342, 342)
+
+[node name="FarBackground" type="CanvasLayer" parent="."]
+layer = -2
+
+[node name="Backdrop" type="Sprite2D" parent="FarBackground"]
+position = Vector2(-40, -30)
+scale = Vector2(0.82, 0.82)
+centered = false
+
+[node name="Skyline" type="Node2D" parent="FarBackground"]
+script = ExtResource("2")
+theme_name = "breakwater"
+
+[node name="World" type="Node2D" parent="."]
+process_mode = 1
+
+[node name="DeckArt" type="Node2D" parent="World"]
+script = ExtResource("3")
+iron = Color(0.12, 0.15, 0.17, 1)
+edge = Color(0.52, 0.58, 0.6, 1)
+seam = Color(0.24, 0.28, 0.3, 1)
+dark = Color(0.05, 0.07, 0.09, 1)
+accent = Color(1.0, 0.7, 0.42, 1)
+live = Color(0.5, 0.9, 0.95, 1)
+
+[node name="Walkways" type="StaticBody2D" parent="World"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="Mole" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(350, 578)
+shape = SubResource("Deck0")
+
+[node name="MoleB" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(1350, 578)
+shape = SubResource("Deck1")
+
+[node name="Groyne" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(2750, 578)
+shape = SubResource("Deck2")
+
+[node name="Causeway" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(4650, 578)
+shape = SubResource("Deck3")
+
+[node name="Head" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(6375, 578)
+shape = SubResource("Deck4")
+
+[node name="Checkpoints" type="Node2D" parent="World"]
+
+[node name="Checkpoint1" type="Marker2D" parent="World/Checkpoints"]
+position = Vector2(2180, 519)
+
+[node name="Checkpoint2" type="Marker2D" parent="World/Checkpoints"]
+position = Vector2(4900, 519)
+
+[node name="Exit" type="Marker2D" parent="World"]
+position = Vector2(6930, 520)
+
+[node name="WaveA" type="Node2D" parent="World"]
+position = Vector2(650, 520)
+script = ExtResource("4")
+width = 500
+height = 420
+push = 240
+on_time = 1.6
+off_time = 1.4
+phase = 0
+
+[node name="Train" type="AnimatableBody2D" parent="World"]
+position = Vector2(3400, 520)
+script = ExtResource("5")
+span = 500
+speed = 340
+cars = 2
+car_length = 180
+gap_time = 1.4
+phase = 0
+
+[node name="WaveB" type="Node2D" parent="World"]
+position = Vector2(5250, 520)
+script = ExtResource("4")
+width = 550
+height = 420
+push = -240
+on_time = 1.6
+off_time = 1.6
+phase = 0
+
+[node name="ExitGate" parent="World" instance=ExtResource("6")]
+position = Vector2(6800, 520)
+
+[node name="Sera" parent="World" instance=ExtResource("10")]
+position = Vector2(150, 519)
+collision_mask = 5
+
+[node name="HighTurret" type="Node2D" parent="World"]
+position = Vector2(1600, 520)
+script = ExtResource("7")
+facing = -1
+muzzle_height = 140
+burst = 2
+rest = 1.8
+reach = 700
+
+[node name="BomberA" type="Node2D" parent="World"]
+position = Vector2(2500, 520)
+script = ExtResource("8")
+patrol_left = 2300
+patrol_right = 2700
+pattern = "B"
+
+[node name="BomberB" type="Node2D" parent="World"]
+position = Vector2(3100, 520)
+script = ExtResource("8")
+patrol_left = 2900
+patrol_right = 3350
+pattern = "BR"
+
+[node name="BomberC" type="Node2D" parent="World"]
+position = Vector2(4300, 520)
+script = ExtResource("8")
+patrol_left = 4000
+patrol_right = 4700
+pattern = "RB"
+
+[node name="Shield" parent="World" instance=ExtResource("9")]
+position = Vector2(4500, 518)
+front_guard = true
+arena_start = 3950
+
+[node name="BomberD" type="Node2D" parent="World"]
+position = Vector2(6000, 520)
+script = ExtResource("8")
+patrol_left = 5750
+patrol_right = 6400
+pattern = "BRR"
+
+[node name="Turret" type="Node2D" parent="World"]
+position = Vector2(6300, 520)
+script = ExtResource("7")
+facing = -1
+muzzle_height = 85
+burst = 2
+rest = 1.8
+reach = 640
+
+[node name="Keeper" parent="World" instance=ExtResource("9")]
+position = Vector2(6600, 518)
+front_guard = true
+reinforced = true
+arena_start = 5700
+
+[node name="Projectiles" type="Node2D" parent="World"]
+z_index = 3
+
+[node name="Effects" type="Node2D" parent="World"]
+z_index = 4
+material = SubResource("AdditiveEffects")
+script = ExtResource("11")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(576, 342)
+
+[node name="Sound" type="AudioStreamPlayer" parent="."]
+
+[node name="HUDLayer" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="HUD" type="Control" parent="HUDLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("12")

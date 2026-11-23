@@ -30,7 +30,15 @@ func _run() -> void:
 
 func _check_shape() -> void:
 	_check(Texts.STAGES.size() == Store.SCENES.size(), "texts.gd의 STAGES 묶음 수가 스테이지 수(%d)와 같아야 합니다" % Store.SCENES.size())
-	_check(Texts.ACTS.size() * 3 >= Store.SCENES.size(), "ACTS에 막 이름이 모자랍니다")
+	var chapter_stages := 0
+	for chapter in Texts.CHAPTERS.size():
+		var entry: Dictionary = Texts.CHAPTERS[chapter]
+		var label := "CHAPTERS의 %d번째 묶음" % (chapter + 1)
+		_check(entry.has("name") and not String(entry["name"]).is_empty(), "%s의 name이 비어 있습니다" % label)
+		_check(entry.has("acts") and entry["acts"] is Array and not entry["acts"].is_empty(), "%s의 acts에 막 이름이 하나 이상 있어야 합니다" % label)
+		if entry.has("acts") and entry["acts"] is Array:
+			chapter_stages += Texts.chapter_size(chapter)
+	_check(chapter_stages == Store.SCENES.size(), "CHAPTERS의 막 수의 세 배가 스테이지 수(%d)와 같아야 합니다" % Store.SCENES.size())
 	for index in Texts.STAGES.size():
 		var entry: Dictionary = Texts.STAGES[index]
 		var label := "STAGES의 %d번째 묶음" % (index + 1)
@@ -44,7 +52,9 @@ func _check_shape() -> void:
 				_check(not part.contains("/"), "%s의 구간 이름에는 / 를 쓸 수 없습니다" % label)
 	_check(Texts.CONTROLS.size() == 9, "CONTROLS에는 조작 설명이 아홉 줄 있어야 합니다")
 	# The story lines the stages ask for by position.
-	for needed: Array in [[3, 3], [4, 3], [5, 1], [6, 3], [7, 3], [8, 1]]:
+	for needed: Array in [[3, 3], [4, 3], [5, 1], [6, 3], [7, 3], [8, 1],
+			[9, 3], [10, 3], [11, 1], [12, 3], [13, 3], [14, 1], [15, 3], [16, 3], [17, 1],
+			[18, 3], [19, 3], [20, 1], [21, 3], [22, 3], [23, 1], [24, 3], [25, 3], [26, 1]]:
 		_check(Texts.stage(needed[0])["says"].size() >= needed[1], "STAGES의 %d번째 묶음 says에는 대사가 %d줄 필요합니다" % [needed[0] + 1, needed[1]])
 
 

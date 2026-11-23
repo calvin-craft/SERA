@@ -1,0 +1,194 @@
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://scripts/mooring_deck.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/skyline.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/sector_deck.gd" id="3"]
+[ext_resource type="PackedScene" path="res://scenes/bulkhead.tscn" id="4"]
+[ext_resource type="Script" path="res://scripts/launcher.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/turret.gd" id="6"]
+[ext_resource type="PackedScene" path="res://scenes/sera.tscn" id="7"]
+[ext_resource type="Script" path="res://scripts/effects.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/hud.gd" id="9"]
+
+[sub_resource type="RectangleShape2D" id="Deck0"]
+size = Vector2(1500, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck1"]
+size = Vector2(1660, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck2"]
+size = Vector2(1940, 116)
+
+[sub_resource type="RectangleShape2D" id="Deck3"]
+size = Vector2(300, 220)
+
+[sub_resource type="RectangleShape2D" id="Deck4"]
+size = Vector2(1350, 116)
+
+[sub_resource type="CanvasItemMaterial" id="AdditiveEffects"]
+blend_mode = 1
+
+[node name="MooringDeck" type="Node2D"]
+process_mode = 3
+script = ExtResource("1")
+next_scene = "res://scenes/pipe_rack.tscn"
+carry_charge = true
+horizontal_bounds = Vector2(-70, 7000)
+fall_limit = 813
+camera_x = Vector2(576, 6490)
+camera_y = Vector2(122, 342)
+
+[node name="FarBackground" type="CanvasLayer" parent="."]
+layer = -2
+
+[node name="Backdrop" type="Sprite2D" parent="FarBackground"]
+position = Vector2(-40, -30)
+scale = Vector2(0.82, 0.82)
+centered = false
+
+[node name="Skyline" type="Node2D" parent="FarBackground"]
+script = ExtResource("2")
+theme_name = "kelder"
+
+[node name="World" type="Node2D" parent="."]
+process_mode = 1
+
+[node name="DeckArt" type="Node2D" parent="World"]
+script = ExtResource("3")
+iron = Color(0.13, 0.15, 0.17, 1)
+edge = Color(0.6, 0.6, 0.62, 1)
+seam = Color(0.27, 0.28, 0.3, 1)
+dark = Color(0.05, 0.06, 0.08, 1)
+accent = Color(1.0, 0.62, 0.38, 1)
+live = Color(0.55, 0.9, 1.0, 1)
+
+[node name="Walkways" type="StaticBody2D" parent="World"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="DockA" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(650, 578)
+shape = SubResource("Deck0")
+
+[node name="DockB" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(2370, 578)
+shape = SubResource("Deck1")
+
+[node name="DockC" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(4430, 578)
+shape = SubResource("Deck2")
+
+[node name="Bollard" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(5550, 410)
+shape = SubResource("Deck3")
+
+[node name="Upper" type="CollisionShape2D" parent="World/Walkways"]
+position = Vector2(6375, 358)
+shape = SubResource("Deck4")
+
+[node name="Checkpoints" type="Node2D" parent="World"]
+
+[node name="Checkpoint1" type="Marker2D" parent="World/Checkpoints"]
+position = Vector2(1640, 519)
+
+[node name="Checkpoint2" type="Marker2D" parent="World/Checkpoints"]
+position = Vector2(3560, 519)
+
+[node name="DownSpots" type="Node2D" parent="World"]
+
+[node name="DownSpot1" type="Marker2D" parent="World/DownSpots"]
+position = Vector2(5360, 520)
+
+[node name="Exit" type="Marker2D" parent="World"]
+position = Vector2(6930, 300)
+
+[node name="GateA" parent="World" instance=ExtResource("4")]
+position = Vector2(1380, 520)
+
+[node name="ExitGate" parent="World" instance=ExtResource("4")]
+position = Vector2(6820, 300)
+
+[node name="Sera" parent="World" instance=ExtResource("7")]
+position = Vector2(150, 519)
+collision_mask = 5
+
+[node name="LauncherA" type="Node2D" parent="World"]
+position = Vector2(1230, 520)
+script = ExtResource("5")
+facing = -1
+rest = 2.8
+reach = 820
+
+[node name="TurretB" type="Node2D" parent="World"]
+position = Vector2(2300, 520)
+script = ExtResource("6")
+facing = -1
+muzzle_height = 85
+burst = 2
+rest = 1.9
+reach = 700
+
+[node name="LauncherB" type="Node2D" parent="World"]
+position = Vector2(3050, 520)
+script = ExtResource("5")
+facing = -1
+rest = 2.6
+reach = 900
+
+[node name="MirrorC" type="Node2D" parent="World"]
+position = Vector2(4200, 520)
+script = ExtResource("6")
+facing = -1
+muzzle_height = 85
+burst = 2
+rest = 2
+reach = 700
+mirror = true
+
+[node name="LauncherC" type="Node2D" parent="World"]
+position = Vector2(5000, 520)
+script = ExtResource("5")
+facing = -1
+rest = 2.6
+reach = 800
+
+[node name="LauncherD" type="Node2D" parent="World"]
+position = Vector2(6300, 300)
+script = ExtResource("5")
+facing = -1
+rest = 2.4
+reach = 800
+
+[node name="MirrorE" type="Node2D" parent="World"]
+position = Vector2(6650, 300)
+script = ExtResource("6")
+facing = -1
+muzzle_height = 85
+burst = 2
+rest = 1.8
+reach = 700
+mirror = true
+
+[node name="Projectiles" type="Node2D" parent="World"]
+z_index = 3
+
+[node name="Effects" type="Node2D" parent="World"]
+z_index = 4
+material = SubResource("AdditiveEffects")
+script = ExtResource("8")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(576, 342)
+
+[node name="Sound" type="AudioStreamPlayer" parent="."]
+
+[node name="HUDLayer" type="CanvasLayer" parent="."]
+layer = 5
+
+[node name="HUD" type="Control" parent="HUDLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("9")

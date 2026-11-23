@@ -22,6 +22,8 @@ var items: Array[MenuItem] = []
 var heading := ""
 var detail := ""
 var shown_for := 0.0
+## Rows for abilities this stage has switched on: [input tokens, description].
+var extra_controls: Array = []
 
 
 func _ready() -> void:
@@ -90,10 +92,11 @@ func _process(delta: float) -> void:
 		decor.queue_redraw()
 
 
-func open_menu(can_retry: bool, campaign_run: bool, stage_heading: String = "", stage_detail: String = "") -> void:
+func open_menu(can_retry: bool, campaign_run: bool, stage_heading: String = "", stage_detail: String = "", abilities: Array = []) -> void:
 	retry_button.disabled = not can_retry
 	heading = stage_heading
 	detail = stage_detail
+	extra_controls = abilities
 	help.text = Texts.PAUSE_HELP if campaign_run and can_retry else ""
 	shown_for = 0.0
 	screen.show()
@@ -132,7 +135,13 @@ func _draw_decor() -> void:
 
 
 func _draw_controls(alpha: float) -> void:
-	var panel := Rect2(decor.size.x * 0.56, 156.0, decor.size.x * 0.44 - 60.0, 54.0 + CONTROL_KEYS.size() * 38.0)
+	var rows: Array = []
+	for i in CONTROL_KEYS.size():
+		rows.append([CONTROL_KEYS[i], Texts.CONTROLS[i] if i < Texts.CONTROLS.size() else ""])
+	rows.append_array(extra_controls)
+	var step := 38.0 if rows.size() <= 9 else 34.0
+	var panel := Rect2(decor.size.x * 0.56, 156.0 - (rows.size() - 9) * 10.0 if rows.size() > 9 else 156.0,
+		decor.size.x * 0.44 - 60.0, 54.0 + rows.size() * step)
 	panel.position.x += (1.0 - alpha) * 30.0
 	MenuTheme.slant(decor, panel, Color(0.02, 0.05, 0.07, 0.78 * alpha), 14.0)
 	MenuTheme.slant(decor, Rect2(panel.position, Vector2(panel.size.x, 3.0)), Color(MenuTheme.ACCENT, alpha), 1.0)
@@ -140,8 +149,7 @@ func _draw_controls(alpha: float) -> void:
 	MenuTheme.spaced(decor, MenuTheme.display_font(600), Vector2(x, panel.position.y + 32.0), Texts.CONTROLS_EYEBROW, 13, Color(MenuTheme.ACCENT, alpha), 4.0)
 	decor.draw_string(MenuTheme.text_font(500), Vector2(x + 112.0, panel.position.y + 32.0), Texts.CONTROLS_HEADING, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(MenuTheme.MUTED, alpha))
 	var y := panel.position.y + 50.0
-	for i in CONTROL_KEYS.size():
-		var caption: String = Texts.CONTROLS[i] if i < Texts.CONTROLS.size() else ""
-		MenuTheme.combo(decor, Vector2(x, y), CONTROL_KEYS[i], alpha, 13)
-		decor.draw_string(MenuTheme.text_font(), Vector2(x + 124.0, y + 16.0), caption, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(MenuTheme.TEXT, alpha))
-		y += 38.0
+	for row: Array in rows:
+		MenuTheme.combo(decor, Vector2(x, y), row[0], alpha, 13)
+		decor.draw_string(MenuTheme.text_font(), Vector2(x + 124.0, y + 16.0), row[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(MenuTheme.TEXT, alpha))
+		y += step

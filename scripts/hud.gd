@@ -14,6 +14,8 @@ const CLEAR := Color(0.02, 0.05, 0.075, 0.0)
 const EMPTY := Color("#1d313b")
 const SEGMENTS := 20
 const INTRO_TIME := 2.7
+## The last part of the chapter card, when it fades and the stage shows through.
+const CARD_FADE := 0.7
 
 var display_font := MenuTheme.display_font(700)
 var number_font := MenuTheme.display_font(600)
@@ -32,6 +34,8 @@ var hint_state: Dictionary = {}
 var complete_age := 0.0
 var feedback_last_left := 0.0
 var feedback_age := 0.0
+## Time since the stage banner began. It waits for the chapter card.
+var intro_age := 0.0
 
 @onready var level = $"../.."
 
@@ -42,6 +46,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	life += delta
+	intro_age = 0.0 if level.card_left > 0.0 else intro_age + delta
 	var energy: int = level.sera.energy
 	if last_energy < 0:
 		last_energy = energy
@@ -84,6 +89,9 @@ func _draw() -> void:
 		_draw_hints()
 	_draw_feedback()
 	_draw_intro()
+	_draw_chapter_card()
+	if level.epilogue_age >= 0.0:
+		_draw_epilogue()
 
 
 func _stage_index() -> int:
@@ -421,12 +429,14 @@ func _tag(point: Vector2, caption: String, tint: Color) -> void:
 
 
 func _draw_intro() -> void:
-	if life >= INTRO_TIME:
+	var age := intro_age
+	if age >= INTRO_TIME or level.card_left > 0.0:
 		return
-	if life < 0.45:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 1.0 - life / 0.45))
-	var t := life / INTRO_TIME
-	var alpha := clampf(minf((life - 0.15) / 0.3, (INTRO_TIME - life) / 0.5), 0.0, 1.0)
+	# The scene fades in from black, unless the chapter card has already done that.
+	if age < 0.45 and not level.chapter_card:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 1.0 - age / 0.45))
+	var t := age / INTRO_TIME
+	var alpha := clampf(minf((age - 0.15) / 0.3, (INTRO_TIME - age) / 0.5), 0.0, 1.0)
 	if alpha <= 0.0:
 		return
 	var index := _stage_index()
@@ -434,24 +444,31 @@ func _draw_intro() -> void:
 	var subtitle: String = _section_parts()[1] if _section_parts().size() > 1 else ""
 	if index >= 0 and level.checkpoint > 0:
 		subtitle = Texts.HUD_FROM_CHECKPOINT.format({"구간": Texts.section(index, level.checkpoint)})
+	var chapter := Texts.chapter_label(Texts.chapter_of(index))
 	var cy := size.y * 0.36
-	var band := Rect2(0, cy - 70, size.x, 140)
+	var head_room := 24.0 if not chapter.is_empty() else 0.0
+	var band := Rect2(0, cy - 70 - head_room, size.x, 140 + head_room)
 	var dark := Color(0.01, 0.025, 0.035, 0.78 * alpha)
 	var half := size.x * 0.5
 	for side in [-1.0, 1.0]:
 		var edge: float = half + side * half
 		draw_polygon(PackedVector2Array([Vector2(half, band.position.y), Vector2(edge, band.position.y), Vector2(edge, band.end.y), Vector2(half, band.end.y)]),
 			PackedColorArray([dark, Color(dark, 0.0), Color(dark, 0.0), dark]))
-	var line := size.x * 0.42 * ease(clampf((life - 0.1) / 0.5, 0.0, 1.0), -2.4)
+	var line := size.x * 0.42 * ease(clampf((age - 0.1) / 0.5, 0.0, 1.0), -2.4)
 	draw_rect(Rect2(half - line, band.position.y, line * 2.0, 2), Color(CYAN, 0.8 * alpha))
 	draw_rect(Rect2(half - line, band.end.y - 2, line * 2.0, 2), Color(CYAN, 0.4 * alpha))
 
+	var spacing := 6.0 + t * 3.0
+	if not chapter.is_empty():
+		var chapter_spacing := 4.0 + t * 2.0
+		var chapter_width := MenuTheme.spaced_width(number_font, chapter, 13, chapter_spacing)
+		MenuTheme.spaced(self, number_font, Vector2(half - chapter_width * 0.5, cy - 60), chapter, 13, Color(MUTED, alpha), chapter_spacing)
 	var eyebrow: String = Texts.stage_number(index) if index >= 0 else Texts.HUD_STAGE_UNLISTED
+	var act := Texts.act_label(index)
 	if level.play_mode == CampaignStore.Mode.PRACTICE:
 		eyebrow = Texts.HUD_PRACTICE + "  ·  " + eyebrow
-	elif index >= 0:
-		eyebrow = Texts.act_label(index) + "  ·  " + eyebrow
-	var spacing := 6.0 + t * 3.0
+	elif not act.is_empty():
+		eyebrow = act + "  ·  " + eyebrow
 	var eyebrow_width := MenuTheme.spaced_width(number_font, eyebrow, 15, spacing)
 	MenuTheme.spaced(self, number_font, Vector2(half - eyebrow_width * 0.5, cy - 32), eyebrow, 15, Color(CYAN, alpha), spacing)
 	var title_size := 52
@@ -461,14 +478,52 @@ func _draw_intro() -> void:
 		draw_string(text_font, Vector2(0, cy + 52), subtitle, HORIZONTAL_ALIGNMENT_CENTER, size.x, 16, Color(MUTED, alpha))
 
 
+## The card that opens a chapter in the campaign: "CHAPTER 1" over the chapter's
+## name on a dark screen. The stage waits behind it and shows through as it fades.
+func _draw_chapter_card() -> void:
+	var left: float = level.card_left
+	if left <= 0.0:
+		return
+	var age: float = level.CHAPTER_CARD_TIME - left
+	var cover := clampf(left / CARD_FADE, 0.0, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.004, 0.012, 0.02, cover))
+	var alpha := clampf((age - 0.2) / 0.45, 0.0, 1.0) * cover
+	if alpha <= 0.0:
+		return
+	var chapter := Texts.chapter_of(_stage_index())
+	var heading := Texts.chapter_card(chapter)
+	var title := Texts.chapter_name(chapter)
+	var half := size.x * 0.5
+	var cy := size.y * 0.46
+	# Two lines open out from the centre, as on the stage banner.
+	var line := size.x * 0.32 * ease(clampf((age - 0.1) / 0.9, 0.0, 1.0), -2.4)
+	draw_rect(Rect2(half - line, cy - 88, line * 2.0, 2), Color(CYAN, 0.8 * alpha))
+	draw_rect(Rect2(half - line, cy + 58, line * 2.0, 2), Color(CYAN, 0.4 * alpha))
+	# "CHAPTER 1" between two short slants, its letters drifting apart while the card is up.
+	var spacing := 9.0 + age * 1.6
+	var heading_width := MenuTheme.spaced_width(number_font, heading, 20, spacing)
+	MenuTheme.slant(self, Rect2(half - heading_width * 0.5 - 46.0, cy - 57, 30, 4), Color(CYAN, alpha), 3.0)
+	MenuTheme.slant(self, Rect2(half + heading_width * 0.5 + 16.0, cy - 57, 30, 4), Color(CYAN, alpha), 3.0)
+	MenuTheme.spaced(self, number_font, Vector2(half - heading_width * 0.5, cy - 48), heading, 20, Color(CYAN, alpha), spacing)
+	# The chapter's name rises into place under it.
+	var name_alpha := clampf((age - 0.3) / 0.45, 0.0, 1.0) * cover
+	var rise := (1.0 - ease(clampf((age - 0.3) / 0.6, 0.0, 1.0), -2.0)) * 18.0
+	draw_string_outline(bold_font, Vector2(0, cy + 28 + rise), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, 66, 10, Color(0, 0, 0, 0.5 * name_alpha))
+	draw_string(bold_font, Vector2(0, cy + 28 + rise), title, HORIZONTAL_ALIGNMENT_CENTER, size.x, 66, Color(Color.WHITE, name_alpha))
+
+
 func _draw_summary() -> void:
 	var t := complete_age
 	var dim := ease(clampf(t / 0.45, 0.0, 1.0), -2.0)
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.005, 0.015, 0.024, 0.55 * dim))
-	var cy := size.y * 0.42
+	var index := _stage_index()
+	# Finishing a chapter's last stage outside practice clears the whole chapter.
+	var chapter_clear: bool = level.play_mode != CampaignStore.Mode.PRACTICE and Texts.closes_chapter(index)
+	var head_room := 30.0 if chapter_clear else 0.0
+	var cy := size.y * 0.42 + head_room
 	var drop := 0.0 if level.clear_note.is_empty() else 18.0
 	var practice: bool = level.play_mode == CampaignStore.Mode.PRACTICE
-	var band := Rect2(0, cy - 120, size.x, 250 + drop + (78.0 if practice else 0.0))
+	var band := Rect2(0, cy - 120 - head_room, size.x, 250 + head_room + drop + (78.0 if practice else 0.0))
 	var half := size.x * 0.5
 	var dark := Color(0.01, 0.03, 0.045, 0.9 * dim)
 	for side in [-1.0, 1.0]:
@@ -484,7 +539,7 @@ func _draw_summary() -> void:
 	if slam > 0.0:
 		var zoom := lerpf(1.6, 1.0, ease(slam, -2.6))
 		var head_alpha := slam
-		var headline: String = Texts.CLEAR_HEADLINE
+		var headline: String = Texts.CLEAR_CHAPTER_HEADLINE if chapter_clear else Texts.CLEAR_HEADLINE
 		var head_size := 58
 		var head_width := MenuTheme.spaced_width(display_font, headline, head_size, 8.0)
 		draw_set_transform(Vector2(half, cy - 52), 0.0, Vector2(zoom, zoom))
@@ -497,6 +552,12 @@ func _draw_summary() -> void:
 		draw_string(bold_font, Vector2(0, cy - 14), level.clear_title, HORIZONTAL_ALIGNMENT_CENTER, size.x, 22, Color(CYAN, head_alpha))
 		if not level.clear_note.is_empty():
 			draw_string(text_font, Vector2(0, cy + 10), level.clear_note, HORIZONTAL_ALIGNMENT_CENTER, size.x, 15, Color(MUTED, head_alpha))
+	# The chapter's name settles above the headline once it has landed.
+	var label_alpha := clampf((t - 0.45) / 0.3, 0.0, 1.0)
+	if chapter_clear and label_alpha > 0.0:
+		var label := Texts.chapter_label(Texts.chapter_of(index))
+		var label_width := MenuTheme.spaced_width(number_font, label, 15, 4.0)
+		MenuTheme.spaced(self, number_font, Vector2(half - label_width * 0.5, cy - 114), label, 15, Color(AMBER, label_alpha), 4.0)
 
 	var seconds_ms := roundi(level.elapsed * 1000.0)
 	var stats := [
@@ -543,6 +604,41 @@ func _draw_summary() -> void:
 			MenuTheme.keycap(self, Vector2(x, y), Texts.CLEAR_CONTINUE_KEY, action, keys_alpha)
 			x += next_width + 34.0
 		MenuTheme.keycap(self, Vector2(x, y), "R", Texts.CLEAR_REPLAY, keys_alpha)
+
+
+## After the campaign's last stage: the story's closing lines one at a time on
+## a dark screen, then the closing words and the key back to the title.
+func _draw_epilogue() -> void:
+	var age: float = level.epilogue_age
+	var cover := clampf(age / 0.8, 0.0, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.004, 0.012, 0.02, 0.96 * cover))
+	var half := size.x * 0.5
+	var lines: Array = Texts.EPILOGUE
+	var step: float = level.EPILOGUE_LINE_TIME
+	var row := 46.0
+	var top := size.y * 0.5 - lines.size() * row * 0.5 - 30.0
+	var eyebrow_alpha := clampf((age - 0.4) / 0.5, 0.0, 1.0)
+	var eyebrow_width := MenuTheme.spaced_width(number_font, Texts.EPILOGUE_EYEBROW, 15, 6.0)
+	MenuTheme.spaced(self, number_font, Vector2(half - eyebrow_width * 0.5, top - 34.0), Texts.EPILOGUE_EYEBROW, 15, Color(AMBER, eyebrow_alpha), 6.0)
+	var line := size.x * 0.22 * ease(eyebrow_alpha, -2.4)
+	draw_rect(Rect2(half - line, top - 20.0, line * 2.0, 2), Color(AMBER, 0.5 * eyebrow_alpha))
+	for i in lines.size():
+		var reveal := clampf((age - 0.9 - i * step) / 0.8, 0.0, 1.0)
+		if reveal <= 0.0:
+			break
+		var rise := (1.0 - ease(reveal, -2.0)) * 12.0
+		var text: String = lines[i]
+		var tint := Color("#ffd6a8") if text.begins_with(Texts.BOSS_ECHO) else INK
+		draw_string(text_font, Vector2(0, top + 30.0 + i * row + rise), text, HORIZONTAL_ALIGNMENT_CENTER, size.x, 20, Color(tint, reveal))
+	var end_alpha := clampf((age - 0.9 - lines.size() * step) / 0.9, 0.0, 1.0)
+	if end_alpha > 0.0:
+		var end_y := top + 30.0 + lines.size() * row + 46.0
+		var end_width := MenuTheme.spaced_width(bold_font, Texts.EPILOGUE_END, 26, 8.0)
+		MenuTheme.spaced(self, bold_font, Vector2(half - end_width * 0.5, end_y), Texts.EPILOGUE_END, 26, Color(CYAN, end_alpha), 8.0)
+	if level.epilogue_done():
+		var keys_alpha := clampf((age - level.epilogue_length()) / 0.4, 0.0, 1.0)
+		var width := _keycap_width(Texts.CLEAR_CONTINUE_KEY, Texts.CLEAR_TO_TITLE)
+		MenuTheme.keycap(self, Vector2(half - width * 0.5, size.y - 84.0), Texts.CLEAR_CONTINUE_KEY, Texts.CLEAR_TO_TITLE, keys_alpha)
 
 
 func _draw_practice_splits(y: float, start: float, column: float, opacity: float) -> void:

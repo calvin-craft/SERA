@@ -21,7 +21,7 @@ blend_mode = 1
 [node name="GreatWheel" type="Node2D"]
 process_mode = 3
 script = ExtResource("1")
-next_scene = "res://scenes/foundry.tscn"
+next_scene = "res://scenes/coastal_line.tscn"
 horizontal_bounds = Vector2(69, 1083)
 fall_limit = 780.0
 

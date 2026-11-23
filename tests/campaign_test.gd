@@ -60,6 +60,10 @@ func _foundry_resume() -> bool:
 		return false
 	var foundry := current_scene as Foundry
 	_check(foundry.play_mode == Store.Mode.CAMPAIGN, "new game opens campaign")
+	# The first stage opens chapter one with its card; the stage waits behind it.
+	_check(foundry.card_left > 0.0 and paused, "a new game opens chapter one with its card")
+	await create_timer(foundry.CHAPTER_CARD_TIME + 0.2).timeout
+	_check(foundry.card_left == 0.0 and not paused and foundry.elapsed < 0.5, "the stage and its clock start after the chapter card")
 	foundry.warden.restore_defeated()
 	foundry.sera.energy = 67
 	foundry._reach_checkpoint(2, Foundry.CHECKPOINTS[2])
@@ -289,12 +293,20 @@ func _later_acts() -> void:
 	_check(wheel.boss.health == 1 and wheel.boss.perch == 1.0 and wheel.relay.powered and not wheel.finale, "the Foreman restores on the wheel with its shield already cut")
 	wheel._finish_stage()
 	await _press(KEY_E)
-	if await _at_scene(Store.TITLE):
-		_check(current_scene.continue_button.disabled and progress.resume_snapshot().is_empty(), "campaign clear returns to title with no pending checkpoint")
+	# Clearing chapter one carries straight on into chapter two, card first.
+	if not await _at_scene(Store.SCENES[9]):
+		return
+	_check(current_scene.card_left > 0.0 and current_scene.play_mode == Store.Mode.CAMPAIGN, "chapter one's clear opens chapter two with its card")
+	_check(progress.resume_snapshot()["stage"] == 9 and progress.chapter_cleared(0) and progress.startable_chapters().has(1),
+		"after chapter one, a new game can start chapter two")
+	if await _leave_to_title():
+		_check(not current_scene.continue_button.disabled, "the title continues into chapter two")
 		var all_recorded := progress.best_ms(0) == 37200
-		for index in Store.SCENES.size():
+		for index in 9:
 			all_recorded = all_recorded and progress.best_ms(index) > 0
-		_check(all_recorded, "all nine best times survive reload")
+		_check(all_recorded, "all nine chapter one best times survive reload")
+		_check(current_scene.stage_buttons[9].disabled == false and current_scene.stage_buttons[10].disabled,
+			"practice opens chapter two only as far as the campaign has reached")
 		current_scene.practice_button.grab_focus()
 		await _press(KEY_ENTER)
 		_check(current_scene.stage_buttons.size() == Store.SCENES.size(), "practice lists every stage")

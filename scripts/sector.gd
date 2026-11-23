@@ -21,8 +21,23 @@ const Ram = preload("res://scripts/ram.gd")
 const Drone = preload("res://scripts/drone.gd")
 const Valve = preload("res://scripts/pulse_valve.gd")
 const AimGuide = preload("res://scripts/sector_guide.gd")
+const Train = preload("res://scripts/freight_train.gd")
+const Gust = preload("res://scripts/gust.gd")
+const Hatch = preload("res://scripts/hatch.gd")
+const Turret = preload("res://scripts/turret.gd")
+const Bomber = preload("res://scripts/bomber.gd")
+const Launcher = preload("res://scripts/launcher.gd")
+const Homing = preload("res://scripts/homing.gd")
+const Absorber = preload("res://scripts/absorber.gd")
+const ShipSway = preload("res://scripts/ship_sway.gd")
+const BarrelRack = preload("res://scripts/barrel_rack.gd")
+const ReflectTarget = preload("res://scripts/reflect_target.gd")
+const LowGravity = preload("res://scripts/low_gravity.gd")
 const POWER := Color("#7eead8")
+const GOLD := Color("#ffe09a")
 const LINE_TIME := 4.6
+## A turret this high fires over a standing Sera: its bolts are caught in the air.
+const HIGH_MUZZLE := 120.0
 
 ## Left and right limits of the camera centre.
 @export var camera_x := Vector2(576.0, 4000.0)
@@ -39,7 +54,24 @@ var valves: Array[Valve] = []
 var rams: Array[Ram] = []
 var drones: Array[Drone] = []
 var gates: Array[Bulkhead] = []
+var trains: Array[Train] = []
+var gusts: Array[Gust] = []
+var hatches: Array[Hatch] = []
+var turrets: Array[Turret] = []
+var bombers: Array[Bomber] = []
+var launchers: Array[Launcher] = []
+var absorbers: Array[Absorber] = []
+var racks: Array[BarrelRack] = []
+var targets: Array[ReflectTarget] = []
+var fields: Array[LowGravity] = []
+## The rolling ship under a chapter three deck stage, or null.
+var sway: ShipSway
+var tilt_felt := false
+var field_felt := false
 var aim_pads: Array[Vector2] = []
+## Floor spots where a downward release is the way on (optional DownSpots markers).
+var down_spots: Array[Vector2] = []
+var gust_felt := false
 var exit_point := Vector2.INF
 var exit_gate: Bulkhead
 ## [what opens or shuts down, the foes that must fall first, already announced]
@@ -81,6 +113,28 @@ func _ready() -> void:
 			drones.append(node)
 		elif node is Bulkhead:
 			gates.append(node)
+		elif node is Train:
+			trains.append(node)
+		elif node is Gust:
+			gusts.append(node)
+		elif node is Hatch:
+			hatches.append(node)
+		elif node is Turret:
+			turrets.append(node)
+		elif node is Bomber:
+			bombers.append(node)
+		elif node is Launcher:
+			launchers.append(node)
+		elif node is Absorber:
+			absorbers.append(node)
+		elif node is BarrelRack:
+			racks.append(node)
+		elif node is ReflectTarget:
+			targets.append(node)
+		elif node is LowGravity:
+			fields.append(node)
+		elif node is ShipSway:
+			sway = node
 	for shape: CollisionShape2D in world.get_node("Walkways").get_children():
 		var size: Vector2 = shape.shape.size
 		decks.append(Rect2(shape.position - size * 0.5, size))
@@ -90,6 +144,9 @@ func _ready() -> void:
 	if world.has_node("AimPads"):
 		for marker: Node2D in world.get_node("AimPads").get_children():
 			aim_pads.append(marker.position)
+	if world.has_node("DownSpots"):
+		for marker: Node2D in world.get_node("DownSpots").get_children():
+			down_spots.append(marker.position)
 	if world.has_node("Exit"):
 		exit_point = world.get_node("Exit").position
 	ground_y = sera.position.y
@@ -114,6 +171,45 @@ func _ready() -> void:
 		hazard.target = sera
 		hazard.warned.connect(_on_hazard_warning)
 		hazard.burst.connect(_on_hazard_burst)
+	for turret in turrets:
+		turret.target = sera
+		_bind_weapon(turret)
+		turret.crashed.connect(_on_warden_crash)
+	for bomber in bombers:
+		bomber.target = sera
+		bomber.attack_prepared.connect(_on_bomber_warning)
+		bomber.crashed.connect(_on_warden_crash)
+		bomber.canister_caught.connect(_on_canister_caught)
+		bomber.canister_burst.connect(_on_canister_burst)
+	for gust in gusts:
+		gust.target = sera
+	for hatch in hatches:
+		hatch.broken.connect(_on_hatch_broken)
+	for launcher in launchers:
+		launcher.target = sera
+		launcher.attack_prepared.connect(_on_launcher_warning)
+		launcher.missile_launched.connect(_on_missile_launched)
+		launcher.crashed.connect(_on_warden_crash)
+	for absorber in absorbers:
+		absorber.target = sera
+		_bind_weapon(absorber)
+		absorber.echo_fired.connect(_on_echo_fired)
+		absorber.drank.connect(_on_absorber_drank)
+		absorber.crashed.connect(_on_warden_crash)
+	for rack in racks:
+		rack.target = sera
+		rack.sway = sway
+		rack.caught.connect(_on_barrel_caught)
+		rack.smashed.connect(_on_barrel_smashed)
+	for target in targets:
+		target.lit_up.connect(_on_target_lit)
+	for field in fields:
+		field.target = sera
+	if sway != null:
+		sway.target = sera
+		sway.leaning.connect(_on_ship_leaning)
+		sway.warned.connect(_on_ship_warned)
+		camera.ignore_rotation = false
 	if hazards.any(func(hazard: Hazard): return hazard.kind == "steam"):
 		steam_tone = Audio.start_room(self, Audio.STEAM_BED, -56.0)
 		steam_tone.name = "SteamTone"
@@ -133,6 +229,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
+	if sway != null:
+		camera.rotation = sway.roll()
 	if steam_tone == null or player_paused:
 		return
 	var mix := 0.0
@@ -176,6 +274,9 @@ func _use_own_backdrop() -> void:
 	if index >= 0 and CampaignStore.has_own_art(index):
 		backdrop.texture = CampaignStore.stage_art(index)
 		backdrop.modulate = Color(0.9, 0.93, 0.95)
+		# A painting replaces the code-drawn skyline.
+		if has_node("FarBackground/Skyline"):
+			get_node("FarBackground/Skyline").hide()
 
 
 func _is_down(foe: Node) -> bool:
@@ -226,6 +327,36 @@ func _notice_passed_machines() -> void:
 	for hazard in hazards:
 		if absf(hazard.position.y - at.y) < 110.0 and at.x > hazard.position.x + 50.0 and at.x < hazard.position.x + 170.0:
 			learn(&"press" if hazard.kind == "press" else (&"steam_dash" if hazard.always_on else &"steam"))
+	# Riding a train once is enough to know what they are for.
+	if sera.is_on_floor() and sera.get_last_slide_collision() != null and sera.get_last_slide_collision().get_collider() is Train:
+		learn(&"train")
+	var in_gust := false
+	for gust in gusts:
+		if gust.active() and gust.contains(sera.global_position):
+			in_gust = true
+	if in_gust:
+		gust_felt = true
+	elif gust_felt:
+		learn(&"gust")
+	# Chapter three: a lean ridden out, a field left behind, a red barrel jumped.
+	if sway != null:
+		if sway.is_leaning():
+			tilt_felt = true
+		elif tilt_felt and absf(sway.lean) < 0.05:
+			learn(&"tilt")
+	var in_field := false
+	for field in fields:
+		if field.holds_target():
+			in_field = true
+	if in_field:
+		field_felt = true
+	elif field_felt:
+		learn(&"low_gravity")
+	if not sera.is_on_floor():
+		for rack in racks:
+			for barrel: Dictionary in rack.barrels:
+				if barrel["red"] and absf(rack.barrel_point(barrel).x - at.x) < 30.0 and at.y < rack.global_position.y - 20.0:
+					learn(&"barrel_red")
 
 
 func _apply_links(quiet: bool) -> void:
@@ -283,6 +414,24 @@ func _restore_room_progress() -> void:
 		for drone in drones:
 			if drone.home_x < edge:
 				drone.restore_defeated()
+		for turret in turrets:
+			if turret.home.x < edge:
+				turret.restore_defeated()
+		for bomber in bombers:
+			if bomber.home_x < edge:
+				bomber.restore_defeated()
+		for hatch in hatches:
+			if hatch.position.x < edge:
+				hatch.break_open(true)
+		for launcher in launchers:
+			if launcher.home.x < edge:
+				launcher.restore_defeated()
+		for absorber in absorbers:
+			if absorber.home.x < edge:
+				absorber.restore_defeated()
+		for target in targets:
+			if target.position.x < edge and target.hold_time <= 0.0:
+				target.strike(true)
 		for relay in relays:
 			if relay.restore_behind_checkpoint and relay.position.x < edge:
 				relay.energize(true)
@@ -310,6 +459,33 @@ func _reset_room() -> void:
 	for relay in relays:
 		if relay is TimedRelay:
 			relay.expire()
+	for turret in turrets:
+		if not turret.down:
+			turret.reset_foe()
+	for bomber in bombers:
+		if not bomber.down:
+			bomber.reset_foe()
+	for gust in gusts:
+		gust.restart()
+	for train in trains:
+		train.restart()
+	for launcher in launchers:
+		if not launcher.down:
+			launcher.reset_foe()
+	for absorber in absorbers:
+		if not absorber.down:
+			absorber.reset_foe()
+	for rack in racks:
+		rack.restart()
+	for target in targets:
+		target.restart()
+	for field in fields:
+		field.restart()
+	if sway != null:
+		sway.restart()
+	gust_felt = false
+	tilt_felt = false
+	field_felt = false
 	ground_y = checkpoint_position.y
 
 
@@ -339,9 +515,105 @@ func _resolve_stage_wave(next_distance: float) -> void:
 		_play(Audio.CORE_BREAK, -7.0, 1.14)
 		_show_feedback(Texts.SECTOR_NOTE_DRONE_DOWN, ICE)
 		_hitstop(0.07, 8.0, 0.1, ICE)
+	for turret in turrets:
+		if turret.down or turret in wave_hits:
+			continue
+		if not _wave_reaches(turret.head_point(), Turret.HIT_RADIUS, next_distance) \
+				and not _wave_reaches(turret.base_point(), Turret.HIT_RADIUS, next_distance):
+			continue
+		wave_hits.append(turret)
+		if turret.mirror_blocks(wave_direction):
+			_mirror_return(turret)
+			continue
+		turret.take_wave(push)
+		learn(&"mirror" if turret.mirror else &"turret")
+		effects.impact(turret.head_point(), true)
+		_play(Audio.CORE_BREAK, -6.0, 0.95)
+		_show_feedback(Texts.SECTOR_NOTE_MIRROR_DOWN if turret.mirror else Texts.SECTOR_NOTE_TURRET_DOWN, ICE)
+		_hitstop(0.07, 8.0, 0.1, ICE)
+	for launcher in launchers:
+		if launcher.down or launcher in wave_hits or not _wave_reaches(launcher.hit_point(), Launcher.HIT_RADIUS, next_distance):
+			continue
+		wave_hits.append(launcher)
+		launcher.glance()
+		effects.impact(launcher.hit_point(), false)
+		_play(Audio.ARMOR, -4.0)
+		_show_feedback(Texts.SECTOR_NOTE_LAUNCHER_ARMOR, HEAT)
+	for absorber in absorbers:
+		if absorber.down or absorber in wave_hits or not _wave_reaches(absorber.chest_point(), 70.0, next_distance):
+			continue
+		wave_hits.append(absorber)
+		absorber.drink(wave_origin.x)
+		_show_feedback(Texts.SECTOR_NOTE_ABSORBED, HEAT)
+	for rack in racks:
+		for barrel: Dictionary in rack.barrels.duplicate():
+			if barrel["fall"] == 0.0 and _wave_reaches(rack.barrel_point(barrel), 46.0, next_distance):
+				rack.smash(barrel)
+	for target in targets:
+		if target in wave_hits or not _wave_reaches(target.global_position, ReflectTarget.HIT_RADIUS, next_distance):
+			continue
+		wave_hits.append(target)
+		target.shake_plate()
+		if not target.lit:
+			_play(Audio.ARMOR, -6.0, 1.3)
+			_show_feedback(Texts.SECTOR_NOTE_TARGET_SHOCK, HEAT)
+	for bomber in bombers:
+		if bomber.down or bomber in wave_hits or not _wave_reaches(bomber.hit_point(), Bomber.HIT_RADIUS, next_distance):
+			continue
+		wave_hits.append(bomber)
+		bomber.take_wave(push)
+		learn(&"bomber_down")
+		effects.impact(bomber.hit_point(), true)
+		_play(Audio.CORE_BREAK, -6.0, 1.05)
+		_show_feedback(Texts.SECTOR_NOTE_BOMBER_DOWN, ICE)
+		_hitstop(0.08, 9.0, 0.1, ICE)
+
+
+## A downward release breaks the hatch it lands on, and whatever is under Sera
+## within reach takes the wave as usual.
+func _on_release(origin: Vector2, direction: Vector2) -> void:
+	super._on_release(origin, direction)
+	if direction.y < 0.5:
+		return
+	var ray := PhysicsRayQueryParameters2D.create(origin, origin + Vector2(0.0, WAVE_RANGE), 1)
+	var hit := get_world_2d().direct_space_state.intersect_ray(ray)
+	if not hit.is_empty() and hit["collider"] is Hatch:
+		hit["collider"].break_open()
+
+
+func _on_hatch_broken(origin: Vector2) -> void:
+	learn(&"hatch")
+	effects.impact(origin, true)
+	_play(Audio.CORE_BREAK, -5.0, 0.78)
+	_show_feedback(Texts.SECTOR_NOTE_HATCH, ICE)
+	shake = maxf(shake, 7.0)
+	deck_art.queue_redraw()
+
+
+func _on_bomber_warning(_red: bool) -> void:
+	_play(Audio.PRESS_CUE, -7.0, 1.2)
+
+
+func _on_canister_caught(origin: Vector2, charge: int) -> void:
+	learn(&"bomber_catch")
+	caught_shots += 1
+	effects.catch_energy(origin)
+	_play(Audio.HEAVY_CATCH, -3.0, 1.1)
+	_hitstop(0.07, 7.0, 0.1, ICE)
+	_show_feedback(Texts.SECTOR_NOTE_CANISTER + ("  +%d" % charge if charge > 0 else ""), ICE)
+
+
+func _on_canister_burst(point: Vector2, hit_player: bool) -> void:
+	effects.impact(point, true)
+	_play(Audio.IMPACT, -6.0, 1.1)
+	shake = maxf(shake, 6.0)
+	if not hit_player and absf(point.x - sera.position.x) < 300.0:
+		learn(&"bomber_red")
 
 
 func _on_guard_hit(guard: Guard) -> void:
+	if guard.knocked_out and guard.front_guard:
+		learn(&"front_guard")
 	if not guard.knocked_out:
 		_show_feedback(Texts.NOTE_ARMOR_BROKEN, HEAT)
 
@@ -427,6 +699,15 @@ func aim_candidates() -> Array:
 	for drone in drones:
 		if not drone.down:
 			candidates.append([drone.global_position, drone.HIT_RADIUS])
+	for bomber in bombers:
+		if not bomber.down:
+			candidates.append([bomber.global_position, Bomber.HIT_RADIUS])
+	for turret in turrets:
+		if not turret.down and turret.muzzle_height >= HIGH_MUZZLE:
+			candidates.append([turret.head_point(), Turret.HIT_RADIUS])
+	for target in targets:
+		if not target.lit:
+			candidates.append([target.global_position, ReflectTarget.HIT_RADIUS])
 	return candidates
 
 
@@ -443,7 +724,12 @@ func belt_under_sera() -> Conveyor:
 ## What Sera says about the machines every sector shares. Each line appears
 ## until the player has done the thing once this session.
 func stage_hints() -> Array:
-	var hints := []
+	# Each chapter explains only its own new machines.
+	var hints := _chapter_three_hints() if Texts.chapter_of(stage_number()) >= 2 else _new_machine_hints()
+	if not tutorial_stage():
+		# Past chapter one only what is new gets explained, plus the story.
+		hints.append_array(_story_hints())
+		return hints
 	var at := sera.global_position
 	for ram in rams:
 		if ram.down or absf(ram.global_position.x - at.x) > 600.0 or absf(ram.global_position.y - at.y) > 110.0:
@@ -497,15 +783,312 @@ func stage_hints() -> Array:
 			hints.append(hint(&"timed", relay.global_position,
 				spoken(Texts.SECTOR_HINT_TIMED_RELAY, [["W", "+", "RMB"]]), POWER))
 			break
+	hints.append_array(_story_hints())
+	return hints
+
+
+func _story_hints() -> Array:
 	for line: Array in lines:
 		if knows(line[1]):
 			continue
 		if sera.position.x >= line[0]:
-			hints.append(hint(line[1], Vector2.INF, [[[], line[2]]]))
+			return [hint(line[1], Vector2.INF, [[[], line[2]]])]
 		break
+	return []
+
+
+## Chapter two's machines and abilities, each explained the first time it matters.
+func _new_machine_hints() -> Array:
+	var hints := []
+	var at := sera.global_position
+	for turret in turrets:
+		if turret.down or not turret.is_aiming() or absf(turret.global_position.x - at.x) > 640.0:
+			continue
+		if turret.muzzle_height >= HIGH_MUZZLE and sera.air_absorb and not knows(&"air_catch"):
+			hints.append(hint(&"air_catch", turret.head_point(), spoken(Texts.SECTOR_HINT_AIR_CATCH, [["Space", "+", "LMB"]])))
+		elif turret.muzzle_height < HIGH_MUZZLE and not knows(&"turret"):
+			hints.append(hint(&"turret", turret.head_point(), spoken(Texts.SECTOR_HINT_TURRET, [["LMB"]])))
+		break
+	for bomber in bombers:
+		if bomber.down or absf(bomber.global_position.x - at.x) > 520.0 or absf(bomber.floor_y - at.y) > 140.0:
+			continue
+		if bomber.is_locking():
+			if bomber.next_is_red() and not knows(&"bomber_red"):
+				hints.append(hint(&"bomber_red", bomber.global_position + Vector2(0.0, 60.0), spoken(Texts.SECTOR_HINT_BOMBER_RED), HEAT))
+			elif not bomber.next_is_red() and not knows(&"bomber_catch"):
+				hints.append(hint(&"bomber_catch", bomber.global_position + Vector2(0.0, 60.0), spoken(Texts.SECTOR_HINT_BOMBER_CATCH, [["LMB"]])))
+		elif bomber.state == Bomber.State.DRIFT and sera.energy >= Sera.RELEASE_COST and not knows(&"bomber_down"):
+			hints.append(hint(&"bomber_down", bomber.global_position, spoken(Texts.SECTOR_HINT_BOMBER_SHOT, [["W", "+", "RMB"]]), POWER))
+		break
+	for guard in guards:
+		if guard.front_guard and not guard.knocked_out and not knows(&"front_guard") \
+				and absf(guard.global_position.x - at.x) < 520.0 and absf(guard.global_position.y - at.y) < 170.0:
+			hints.append(hint(&"front_guard", guard.global_position + Vector2(0.0, -210.0),
+				spoken(Texts.SECTOR_HINT_FRONT_GUARD, [["S", "+", "RMB"]]), HEAT))
+			break
+	if sera.down_release and sera.energy >= Sera.RELEASE_COST:
+		for hatch in hatches:
+			if not hatch.open and not knows(&"hatch") and absf(hatch.global_position.x - at.x) < 220.0 \
+					and absf(hatch.global_position.y - at.y) < 80.0:
+				hints.append(hint(&"hatch", hatch.global_position + Vector2(0.0, -150.0), spoken(Texts.SECTOR_HINT_HATCH, [["S", "+", "RMB"]])))
+				break
+		for spot in down_spots:
+			if not knows(&"release_down") and absf(spot.x - at.x) < 200.0 and absf(spot.y - at.y) < 80.0:
+				hints.append(hint(&"release_down", spot + Vector2(0.0, -230.0), spoken(Texts.SECTOR_HINT_DOWN, [["S", "+", "RMB"]])))
+				break
+	if not knows(&"train"):
+		for train in trains:
+			var edge: float = train.home.x if at.x < train.home.x + train.span * 0.5 else train.home.x + train.span
+			if absf(edge - at.x) < 260.0 and absf(train.home.y - at.y) < 60.0:
+				hints.append(hint(&"train", Vector2(edge, train.home.y - 90.0), spoken(Texts.SECTOR_HINT_TRAIN, [[]])))
+				break
+	if not knows(&"gust"):
+		for gust in gusts:
+			if gust.active() and gust.contains(at):
+				hints.append(hint(&"gust", Vector2.INF, spoken(Texts.SECTOR_HINT_GUST)))
+				break
 	return hints
 
 
 func _on_shot_absorbed(origin: Vector2, charge: int, precise: bool) -> void:
 	super._on_shot_absorbed(origin, charge, precise)
 	learn(&"drone_shot")
+	if not turrets.is_empty():
+		learn(&"turret")
+
+
+# ---------------------------------------------------------------- chapter three
+
+
+## A shockwave met a mirror face head on: it comes straight back as a shot.
+func _mirror_return(turret: Turret) -> void:
+	turret.flash_mirror()
+	var face := Vector2(turret.global_position.x + turret.facing * 64.0, wave_origin.y)
+	var shot := fire_shot(face, turret.facing, false, false, turret)
+	shot.echo = true
+	effects.impact(face, false, false)
+	_play(Audio.ARMOR, -3.0, 1.35)
+	_show_feedback(Texts.SECTOR_NOTE_MIRROR, HEAT)
+
+
+## What a reflected shot can strike in a sector: turrets (mirrors included),
+## launchers, absorbers, wardens, drones, bombers, targets and relays.
+func returned_hit(from: Vector2, to: Vector2, shot: Node2D) -> bool:
+	var push := signf(to.x - from.x) if to.x != from.x else sera.facing
+	var heavy: bool = shot.heavy
+	for turret in turrets:
+		if not turret.down and (crosses(from, to, turret.head_point(), Turret.HIT_RADIUS) or crosses(from, to, turret.base_point(), Turret.HIT_RADIUS)):
+			turret.take_wave(push)
+			learn(&"mirror" if turret.mirror else &"turret")
+			_struck(turret.head_point(), Texts.SECTOR_NOTE_MIRROR_DOWN if turret.mirror else Texts.SECTOR_NOTE_TURRET_DOWN)
+			return true
+	for launcher in launchers:
+		if not launcher.down and crosses(from, to, launcher.hit_point(), Launcher.HIT_RADIUS):
+			launcher.take_hit(push)
+			learn(&"launcher")
+			_struck(launcher.hit_point(), Texts.SECTOR_NOTE_LAUNCHER_DOWN)
+			return true
+	for absorber in absorbers:
+		if absorber.down or not crosses(from, to, absorber.chest_point(), Absorber.HIT_RADIUS):
+			continue
+		if heavy:
+			absorber.take_hit(push)
+			if absorber.down:
+				learn(&"absorber")
+				_struck(absorber.chest_point(), Texts.SECTOR_NOTE_ABSORBER_DOWN)
+			else:
+				effects.impact(absorber.chest_point(), true)
+				_play(Audio.ARMOR, -3.0, 0.8)
+				_show_feedback(Texts.NOTE_ARMOR_BROKEN, HEAT)
+				_hitstop(0.07, 8.0, 0.1, ICE)
+		else:
+			absorber.drink(from.x)
+			_show_feedback(Texts.SECTOR_NOTE_ABSORBED, HEAT)
+		return true
+	for guard in guards:
+		if guard.knocked_out or not crosses(from, to, guard.global_position + Vector2(0.0, -75.0), 64.0):
+			continue
+		var hit_point := guard.global_position + Vector2(0.0, -68.0)
+		if guard.shielded or guard.shield_blocks(Vector2(push, 0.0)):
+			guard.flash_shield()
+			effects.impact(hit_point, false)
+			_play(Audio.ARMOR, -4.0)
+			_show_feedback(Texts.NOTE_FRONT_SHIELD if guard.front_guard else Texts.NOTE_SHIELDED, HEAT)
+			return true
+		guard.knockback(push)
+		effects.impact(hit_point, true)
+		_on_guard_hit(guard)
+		if guard.knocked_out:
+			_save_progress()
+		_hitstop(0.086, 10.5, 0.13, ICE)
+		return true
+	for drone in drones:
+		if not drone.down and crosses(from, to, drone.hit_point(), drone.HIT_RADIUS):
+			drone.take_wave(push)
+			_struck(drone.hit_point(), Texts.SECTOR_NOTE_DRONE_DOWN)
+			return true
+	for bomber in bombers:
+		if not bomber.down and crosses(from, to, bomber.hit_point(), Bomber.HIT_RADIUS):
+			bomber.take_wave(push)
+			_struck(bomber.hit_point(), Texts.SECTOR_NOTE_BOMBER_DOWN)
+			return true
+	for target in targets:
+		if crosses(from, to, target.global_position, ReflectTarget.HIT_RADIUS) and (not target.lit or target.hold_time > 0.0):
+			target.strike()
+			return true
+	for relay in relays:
+		if not relay.powered and crosses(from, to, relay.global_position, relay.HIT_RADIUS):
+			relay.energize()
+			_save_progress()
+			return true
+	return false
+
+
+func _struck(point: Vector2, message: String) -> void:
+	effects.impact(point, true)
+	effects.catch_shot(point, true)
+	_play(Audio.CORE_BREAK, -5.0, 1.05)
+	_show_feedback(message, GOLD)
+	_hitstop(0.08, 9.0, 0.12, GOLD)
+	deck_art.queue_redraw()
+
+
+func _on_launcher_warning(_sweep: bool) -> void:
+	_play(Audio.SHOT_CUE, -6.0, 0.8)
+
+
+func _on_missile_launched(origin: Vector2, launcher: Launcher) -> void:
+	var missile := Homing.new()
+	missile.position = origin
+	missile.player = sera
+	missile.level = self
+	missile.source = launcher
+	missile.velocity = Vector2(launcher.facing * 0.45, -1.0).normalized() * Homing.SPEED
+	missile.direction = launcher.facing
+	missile.absorbed.connect(_on_missile_caught)
+	missile.reflected.connect(_on_shot_reflected)
+	missile.burst.connect(_on_missile_burst)
+	launcher.missile = missile
+	shots.add_child(missile)
+	_play(Audio.LIFT, -7.0, 0.72)
+
+
+func _on_missile_caught(origin: Vector2, charge: int, precise: bool) -> void:
+	learn(&"homing")
+	caught_shots += 1
+	if precise:
+		perfect_shots += 1
+	effects.catch_energy(origin)
+	_play(Audio.HEAVY_CATCH, -2.5, 1.15)
+	_hitstop(0.08, 7.0, 0.11, ICE)
+	_show_feedback(Texts.SECTOR_NOTE_MISSILE + ("  +%d" % charge if charge > 0 else ""), ICE)
+
+
+func _on_missile_burst(origin: Vector2, _hit_player: bool) -> void:
+	effects.impact(origin, true)
+	if absf(origin.x - sera.position.x) < 700.0:
+		_play(Audio.IMPACT, -8.0, 1.2)
+
+
+func _on_echo_fired(origin: Vector2, direction: float, guard: Absorber) -> void:
+	var shot := fire_shot(origin, direction, false, true, guard)
+	shot.echo = true
+	_play(Audio.SHOT, -4.0, 0.7)
+
+
+func _on_absorber_drank(origin: Vector2) -> void:
+	effects.catch_shot(origin, false)
+	_play(Audio.HEAVY_CATCH, -5.0, 1.3)
+
+
+func _on_barrel_caught(origin: Vector2, charge: int, precise: bool) -> void:
+	learn(&"barrel")
+	caught_shots += 1
+	if precise:
+		perfect_shots += 1
+	effects.catch_energy(origin)
+	_play(Audio.PRECISE_CATCH if precise else Audio.HEAVY_CATCH, -2.0, 0.95)
+	_hitstop(0.09 if precise else 0.07, 8.0, 0.12, ICE)
+	_show_feedback(Texts.SECTOR_NOTE_BARREL + ("  +%d" % charge if charge > 0 else ""), ICE)
+
+
+func _on_barrel_smashed(origin: Vector2, _hit_player: bool) -> void:
+	effects.impact(origin, true)
+	_play(Audio.IMPACT, -6.0, 0.9)
+	shake = maxf(shake, 4.0)
+
+
+func _on_target_lit(origin: Vector2) -> void:
+	learn(&"target")
+	effects.catch_shot(origin, true)
+	_play(Audio.RELAY, -3.0, 1.15)
+	_show_feedback(Texts.SECTOR_NOTE_TARGET, GOLD)
+	_hitstop(0.063, 4.0, 0.07, GOLD)
+	deck_art.queue_redraw()
+
+
+func _on_ship_leaning(side: float) -> void:
+	for rack in racks:
+		rack.let_go(side)
+	shake = maxf(shake, 3.0)
+
+
+func _on_ship_warned(_side: float) -> void:
+	_play(Audio.IMPACT, -12.0, 0.55)
+
+
+## The missile in the air nearest Sera, or null.
+func _nearest_missile() -> Homing:
+	var best: Homing
+	for shot in shots.get_children():
+		if shot is Homing and not shot.returned and (best == null or shot.global_position.distance_to(sera.global_position) < best.global_position.distance_to(sera.global_position)):
+			best = shot
+	return best
+
+
+## Chapter three's machines and the reflect, each explained the first time it matters.
+func _chapter_three_hints() -> Array:
+	var hints := []
+	var at := sera.global_position
+	var reflect_keys := [["LMB", "+", "RMB"]]
+	if sway != null and not knows(&"tilt") and (sway.warning() or sway.is_leaning()):
+		hints.append(hint(&"tilt", Vector2.INF, spoken(Texts.SECTOR_HINT_TILT), HEAT))
+	for rack in racks:
+		for barrel: Dictionary in rack.barrels:
+			var point := rack.barrel_point(barrel)
+			if barrel["fall"] > 0.0 or absf(point.x - at.x) > 480.0 or absf(rack.global_position.y - at.y) > 40.0 \
+					or signf(at.x - point.x) != barrel["side"]:
+				continue
+			if barrel["red"] and not knows(&"barrel_red"):
+				hints.append(hint(&"barrel_red", point + Vector2(0.0, -40.0), spoken(Texts.SECTOR_HINT_BARREL_RED, [["Space"]]), HEAT))
+			elif not barrel["red"] and not knows(&"barrel"):
+				hints.append(hint(&"barrel", point + Vector2(0.0, -40.0), spoken(Texts.SECTOR_HINT_BARREL, [["LMB"]])))
+			break
+	var missile := _nearest_missile()
+	if missile != null and not knows(&"homing") and missile.global_position.distance_to(at) < 700.0:
+		hints.append(hint(&"homing", missile.global_position, spoken(Texts.SECTOR_HINT_HOMING, reflect_keys), HEAT))
+	for absorber in absorbers:
+		if not absorber.down and not knows(&"absorber") and absorber._engaged():
+			hints.append(hint(&"absorber", absorber.chest_point() + Vector2(0.0, -40.0),
+				spoken(Texts.SECTOR_HINT_ABSORBER_ECHO if absorber.is_charging() else Texts.SECTOR_HINT_ABSORBER, reflect_keys), HEAT))
+			break
+	for turret in turrets:
+		if turret.down or absf(turret.global_position.x - at.x) > 640.0 or absf(turret.global_position.y - at.y) > 240.0:
+			continue
+		if turret.mirror and not knows(&"mirror"):
+			hints.append(hint(&"mirror", turret.head_point(), spoken(Texts.SECTOR_HINT_MIRROR, reflect_keys), HEAT))
+		elif sera.reflect and not knows(&"reflect") and turret.is_aiming():
+			hints.append(hint(&"reflect", turret.head_point(), spoken(Texts.SECTOR_HINT_REFLECT, reflect_keys)))
+		break
+	for target in targets:
+		if not target.lit and not knows(&"target") and absf(target.global_position.x - at.x) < 460.0 and at.y - target.global_position.y < 480.0:
+			hints.append(hint(&"target", target.global_position, spoken(Texts.SECTOR_HINT_TARGET, [["LMB", "+", "W", "+", "RMB"]]), GOLD))
+			break
+	if not knows(&"low_gravity"):
+		for field in fields:
+			if field.holds_target():
+				hints.append(hint(&"low_gravity", Vector2.INF, spoken(Texts.SECTOR_HINT_LOW_GRAVITY)))
+				break
+	if sera.reflect and not knows(&"reflect") and _incoming(false):
+		hints.append(hint(&"reflect", Vector2.INF, spoken(Texts.SECTOR_HINT_REFLECT, reflect_keys)))
+	return hints

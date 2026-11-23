@@ -13,6 +13,12 @@ const STAGE_TINT := [
 	Color("#87e7f5"), Color("#8fd9ff"), Color("#ff9e6e"),
 	Color("#ffb46e"), Color("#9fe6d8"), Color("#ffc27b"),
 	Color("#b9a6ff"), Color("#8fd9ff"), Color("#ff8a70"),
+	Color("#ffb98a"), Color("#a9d8ff"), Color("#ff9d7a"),
+	Color("#ffd27b"), Color("#8fd9ff"), Color("#ffa070"),
+	Color("#9fe0ff"), Color("#b9c7ff"), Color("#ff8a70"),
+	Color("#a3d9f0"), Color("#ffd98a"), Color("#ff9a78"),
+	Color("#9fe6ff"), Color("#ffc08a"), Color("#ff8f6e"),
+	Color("#c3b0ff"), Color("#ffe09a"), Color("#ffb36b"),
 ]
 const CARD_SIZE := Vector2(286, 330)
 
@@ -31,6 +37,13 @@ var curtain: ColorRect
 var menu_items: Array[MenuItem] = []
 var practice_header: Control
 var practice_back: MenuItem
+## One tab per chapter above the practice cards; selecting one jumps to its cards.
+var chapter_tabs: Array[MenuItem] = []
+## The page a new game shows once more than one chapter can be started.
+var chapter_page: ColorRect
+var chapter_header: Control
+var chapter_items: Array[MenuItem] = []
+var pending_chapter := 0
 var ui_voices: Array[AudioStreamPlayer]
 var clock := 0.0
 var sound_ready := false
@@ -59,9 +72,10 @@ func _ready() -> void:
 
 	_build_main()
 	_build_practice()
+	_build_chapters()
 	confirm_new = ConfirmationDialog.new()
 	confirm_new.title = Texts.CONFIRM_TITLE
-	confirm_new.dialog_text = Texts.CONFIRM_TEXT.format({"스테이지": Texts.stage_name(0)})
+	confirm_new.dialog_text = _confirm_text(0)
 	confirm_new.ok_button_text = Texts.CONFIRM_OK
 	confirm_new.cancel_button_text = Texts.CONFIRM_CANCEL
 	confirm_new.theme = theme
@@ -211,6 +225,8 @@ func _build_main() -> void:
 	continue_button = _menu_item(Texts.TITLE_CONTINUE, "01", 48)
 	new_button = _menu_item(Texts.TITLE_NEW_GAME, "02", 48)
 	practice_button = _menu_item(Texts.TITLE_PRACTICE, "03", 48)
+	# A new game starts the first chapter.
+	new_button.caption = Texts.chapter_label(Texts.chapter_of(0)).replace("  ·  ", " · ")
 	var quit := _menu_item(Texts.TITLE_QUIT, "", 38)
 	quit.font_size = 17
 	for item in [continue_button, new_button, practice_button, quit]:
@@ -249,7 +265,30 @@ func _build_practice() -> void:
 	practice_header.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	practice_header.draw.connect(_draw_practice_header)
 
-	# Nine cards, three on screen at a time: one act per page. The row scrolls to the focused card.
+	# Chapter tabs on the right of the header.
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override(&"separation", 10)
+	practice_page.add_child(tabs)
+	tabs.anchor_left = 1.0
+	tabs.anchor_right = 1.0
+	tabs.offset_right = -110
+	tabs.offset_left = -110 - Texts.CHAPTERS.size() * 214.0
+	tabs.offset_top = 70
+	tabs.offset_bottom = 100
+	tabs.alignment = BoxContainer.ALIGNMENT_END
+	for chapter in Texts.CHAPTERS.size():
+		var tab := MenuItem.new()
+		tab.text = Texts.chapter_label(chapter).replace("  ·  ", " · ")
+		tab.compact = true
+		tab.font_size = 14
+		tab.custom_minimum_size = Vector2(204, 30)
+		tabs.add_child(tab)
+		tab.pressed.connect(_open_practice_chapter.bind(chapter))
+		tab.pressed.connect(_on_menu_pick)
+		tab.focus_entered.connect(_on_menu_focus)
+		chapter_tabs.append(tab)
+
+	# Cards in one row, three on screen at a time: one act per page. The row scrolls to the focused card.
 	var scroller := ScrollContainer.new()
 	scroller.follow_focus = true
 	scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
@@ -280,19 +319,22 @@ func _build_practice() -> void:
 		card.text = "\n".join([Texts.stage_name(i), Texts.stage(i)["card"],
 			Texts.CARD_RECORD.format({"기록": record}), Texts.CARD_PRACTICE_RECORD.format({"기록": practice_record})])
 		card.art = CampaignStore.stage_art(i)
-		card.number = i + 1
+		card.skyline = CampaignStore.skyline(i)
+		card.number = Texts.stage_in_chapter(i)
 		card.stage_name = Texts.stage_name(i)
 		card.focus_line = Texts.stage(i)["card"]
 		card.record = record
 		card.practice_record = practice_record
 		card.has_practice_record = practice_ms > 0
 		card.cleared = best > 0
-		card.tint = STAGE_TINT[i]
+		card.locked = not campaign.practice_open(i)
+		card.disabled = card.locked
+		card.tint = STAGE_TINT[i] if i < STAGE_TINT.size() else MenuTheme.ACCENT
 		card.custom_minimum_size = CARD_SIZE
 		row.add_child(card)
 		card.pressed.connect(_start_practice.bind(i))
 		card.focus_entered.connect(_on_menu_focus)
-		card.focus_entered.connect(practice_header.queue_redraw)
+		card.focus_entered.connect(_on_card_focus.bind(i))
 		card.pressed.connect(_on_menu_pick)
 		stage_buttons.append(card)
 
@@ -315,16 +357,25 @@ func _build_practice() -> void:
 	practice_back.focus_entered.connect(_on_menu_focus)
 
 	# Cards sit in a row; up/down also step through them so lists and pads both work.
+	# Up from a chapter's first card goes to that chapter's tab.
 	for i in stage_buttons.size():
 		var card := stage_buttons[i]
 		var previous := stage_buttons[maxi(i - 1, 0)]
 		var next: Control = stage_buttons[i + 1] if i + 1 < stage_buttons.size() else practice_back
+		var chapter := Texts.chapter_of(i)
+		var opens := chapter >= 0 and Texts.chapter_start(chapter) == i
 		card.focus_neighbor_left = card.get_path_to(previous)
-		card.focus_neighbor_top = card.get_path_to(previous)
+		card.focus_neighbor_top = card.get_path_to(chapter_tabs[chapter] if opens else previous)
 		card.focus_neighbor_right = card.get_path_to(stage_buttons[mini(i + 1, stage_buttons.size() - 1)])
 		card.focus_neighbor_bottom = card.get_path_to(next)
 		card.focus_next = card.get_path_to(next)
 		card.focus_previous = card.get_path_to(previous)
+	for chapter in chapter_tabs.size():
+		var tab := chapter_tabs[chapter]
+		tab.focus_neighbor_left = tab.get_path_to(chapter_tabs[maxi(chapter - 1, 0)])
+		tab.focus_neighbor_right = tab.get_path_to(chapter_tabs[mini(chapter + 1, chapter_tabs.size() - 1)])
+		tab.focus_neighbor_top = tab.get_path_to(tab)
+		tab.focus_neighbor_bottom = tab.get_path_to(stage_buttons[Texts.chapter_start(chapter)])
 	var last := stage_buttons[stage_buttons.size() - 1]
 	practice_back.focus_neighbor_top = practice_back.get_path_to(last)
 	practice_back.focus_neighbor_left = practice_back.get_path_to(last)
@@ -335,13 +386,135 @@ func _build_practice() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if practice_page.visible and event.is_action_pressed(&"ui_cancel"):
+	if chapter_page.visible and event.is_action_pressed(&"ui_cancel"):
+		get_viewport().set_input_as_handled()
+		_close_chapters()
+	elif practice_page.visible and event.is_action_pressed(&"ui_cancel"):
 		get_viewport().set_input_as_handled()
 		_close_practice()
+	elif practice_page.visible and (event.is_action_pressed(&"ui_page_up") or event.is_action_pressed(&"ui_page_down")):
+		get_viewport().set_input_as_handled()
+		var step := -1 if event.is_action_pressed(&"ui_page_up") else 1
+		_open_practice_chapter(clampi(_viewed_chapter() + step, 0, Texts.CHAPTERS.size() - 1))
+
+
+## The chapter whose cards are being looked at.
+func _viewed_chapter() -> int:
+	for i in stage_buttons.size():
+		if stage_buttons[i].has_focus():
+			return maxi(Texts.chapter_of(i), 0)
+	for chapter in chapter_tabs.size():
+		if chapter_tabs[chapter].has_focus() or chapter_tabs[chapter].selected:
+			return chapter
+	return 0
+
+
+func _on_card_focus(index: int) -> void:
+	var chapter := Texts.chapter_of(index)
+	for i in chapter_tabs.size():
+		chapter_tabs[i].selected = i == chapter
+	practice_header.queue_redraw()
+
+
+## Jumps to a chapter's cards: its first open one, or its first one if none is.
+func _open_practice_chapter(chapter: int) -> void:
+	var first := Texts.chapter_start(chapter)
+	var target := stage_buttons[first]
+	for i in range(first, first + Texts.chapter_size(chapter)):
+		if not stage_buttons[i].disabled:
+			target = stage_buttons[i]
+			break
+	target.grab_focus()
+
+
+func _build_chapters() -> void:
+	chapter_page = ColorRect.new()
+	chapter_page.color = Color(0.008, 0.02, 0.032, 0.82)
+	add_child(chapter_page)
+	chapter_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	chapter_header = Control.new()
+	chapter_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chapter_page.add_child(chapter_header)
+	chapter_header.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	chapter_header.draw.connect(_draw_chapter_header)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override(&"separation", 8)
+	chapter_page.add_child(column)
+	column.anchor_left = 0.095
+	column.anchor_right = 0.58
+	column.offset_top = 196
+	for chapter in Texts.CHAPTERS.size():
+		var item := MenuItem.new()
+		item.text = Texts.chapter_label(chapter).replace("  ·  ", " · ")
+		item.index_label = "%02d" % (chapter + 1)
+		item.font_size = 21
+		item.compact = true
+		item.custom_minimum_size.y = 52
+		column.add_child(item)
+		item.pressed.connect(_choose_chapter.bind(chapter))
+		item.pressed.connect(_on_menu_pick)
+		item.focus_entered.connect(_on_menu_focus)
+		chapter_items.append(item)
+	chapter_page.hide()
+
+
+func _show_chapters() -> void:
+	main_page.hide()
+	chapter_page.show()
+	var startable := campaign.startable_chapters()
+	for chapter in chapter_items.size():
+		var item := chapter_items[chapter]
+		var first := Texts.stage_name(Texts.chapter_start(chapter))
+		item.disabled = not startable.has(chapter)
+		if item.disabled:
+			item.caption = Texts.CARD_LOCKED
+		elif campaign.chapter_cleared(chapter):
+			item.caption = Texts.CHAPTER_SELECT_CLEARED.format({"스테이지": first}).replace("  ·  ", " · ")
+		else:
+			item.caption = Texts.CHAPTER_SELECT_FROM.format({"스테이지": first})
+	_play_intro(chapter_items, 0.0)
+	chapter_page.modulate.a = 0.0
+	create_tween().tween_property(chapter_page, "modulate:a", 1.0, 0.18)
+	chapter_items[startable[-1]].grab_focus()
+
+
+func _close_chapters() -> void:
+	_show_main()
+	_play_intro(menu_items, 0.0)
+	new_button.grab_focus()
+
+
+func _choose_chapter(chapter: int) -> void:
+	pending_chapter = chapter
+	if campaign.resume_snapshot().is_empty():
+		_new_game()
+	else:
+		confirm_new.dialog_text = _confirm_text(chapter)
+		confirm_new.popup_centered(Vector2i(500, 190))
+		confirm_new.get_cancel_button().grab_focus()
+
+
+func _confirm_text(chapter: int) -> String:
+	var first := Texts.chapter_start(chapter)
+	return Texts.CONFIRM_TEXT.format({"스테이지": Texts.stage_name(first), "챕터": Texts.chapter_name(chapter)})
+
+
+func _draw_chapter_header() -> void:
+	var left := 110.0
+	MenuTheme.slant(chapter_header, Rect2(left, 62, 30, 4), MenuTheme.ACCENT, 3.0)
+	MenuTheme.spaced(chapter_header, MenuTheme.display_font(600), Vector2(left + 40, 70), Texts.CHAPTER_SELECT_EYEBROW, 14, MenuTheme.ACCENT, 4.0)
+	chapter_header.draw_string(MenuTheme.text_font(700), Vector2(left, 116), Texts.CHAPTER_SELECT_HEADING, HORIZONTAL_ALIGNMENT_LEFT, -1, 36, MenuTheme.TEXT)
+	chapter_header.draw_string(MenuTheme.text_font(), Vector2(left, 144), Texts.CHAPTER_SELECT_NOTE, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, MenuTheme.MUTED)
+	var y := size.y - 44.0
+	var x := left
+	x += MenuTheme.keycap(chapter_header, Vector2(x, y), "↑↓", Texts.KEY_SELECT) + 22.0
+	x += MenuTheme.keycap(chapter_header, Vector2(x, y), "Enter", Texts.PRACTICE_KEY_START) + 22.0
+	MenuTheme.keycap(chapter_header, Vector2(x, y), "Esc", Texts.PRACTICE_BACK)
 
 
 func _show_main() -> void:
 	practice_page.hide()
+	chapter_page.hide()
 	main_page.show()
 	var summary := campaign.resume_label()
 	continue_button.disabled = summary.is_empty()
@@ -354,11 +527,13 @@ func _show_practice() -> void:
 	main_page.hide()
 	practice_page.show()
 	var items: Array = stage_buttons.duplicate()
+	items.append_array(chapter_tabs)
 	items.append(practice_back)
 	_play_intro(items, 0.0)
 	practice_page.modulate.a = 0.0
 	create_tween().tween_property(practice_page, "modulate:a", 1.0, 0.18)
 	stage_buttons[0].grab_focus()
+	_on_card_focus(0)
 
 
 func _close_practice() -> void:
@@ -402,35 +577,41 @@ func _draw_practice_header() -> void:
 	practice_header.draw_string(MenuTheme.text_font(700), Vector2(left, 116), Texts.PRACTICE_HEADING, HORIZONTAL_ALIGNMENT_LEFT, -1, 36, MenuTheme.TEXT)
 	practice_header.draw_string(MenuTheme.text_font(), Vector2(left, 144), Texts.PRACTICE_NOTE,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 15, MenuTheme.MUTED)
-	# Which act the focused card belongs to, and where it sits among all stages.
+	# Which chapter and act the focused card belongs to, and where it sits in its chapter.
 	var focused := 0
 	for i in stage_buttons.size():
 		if stage_buttons[i].has_focus():
 			focused = i
 	var right := size.x - left
+	var chapter := Texts.chapter_of(focused)
 	var act := Texts.act_label(focused)
 	var act_width := MenuTheme.spaced_width(MenuTheme.display_font(600), act, 15, 3.0)
 	MenuTheme.spaced(practice_header, MenuTheme.display_font(600), Vector2(right - act_width, 116), act, 15, STAGE_TINT[focused], 3.0)
-	for i in stage_buttons.size():
-		var dot := Rect2(right - (stage_buttons.size() - i) * 17.0 + (4.0 if i % 3 == 0 else 0.0) - 4.0, 132, 11, 5)
-		MenuTheme.slant(practice_header, dot, STAGE_TINT[i] if i == focused else Color(MenuTheme.DIM, 0.7), 3.0)
+	var first := Texts.chapter_start(chapter) if chapter >= 0 else 0
+	var count := Texts.chapter_size(chapter) if chapter >= 0 else stage_buttons.size()
+	for i in count:
+		var stage := first + i
+		var dot := Rect2(right - (count - i) * 17.0 + (4.0 if i % Texts.STAGES_PER_ACT == 0 else 0.0) - 4.0, 132, 11, 5)
+		MenuTheme.slant(practice_header, dot, STAGE_TINT[stage] if stage == focused else Color(MenuTheme.DIM, 0.7), 3.0)
 	var y := size.y - 44.0
 	var x := left
 	x += MenuTheme.keycap(practice_header, Vector2(x, y), "← →", Texts.PRACTICE_KEY_STAGES) + 22.0
+	x += MenuTheme.keycap(practice_header, Vector2(x, y), "PgUp PgDn", Texts.PRACTICE_KEY_CHAPTERS) + 22.0
 	x += MenuTheme.keycap(practice_header, Vector2(x, y), "Enter", Texts.PRACTICE_KEY_START) + 22.0
 	MenuTheme.keycap(practice_header, Vector2(x, y), "Esc", Texts.PRACTICE_BACK)
 
 
+## A new game starts chapter one, or asks which chapter once a later one is open.
 func _confirm_start() -> void:
-	if campaign.resume_snapshot().is_empty():
-		_new_game()
-	else:
-		confirm_new.popup_centered(Vector2i(500, 190))
-		confirm_new.get_cancel_button().grab_focus()
+	if campaign.startable_chapters().size() > 1:
+		_show_chapters()
+		return
+	_choose_chapter(0)
 
 
 func _new_game() -> void:
-	_queue_launch(0, CampaignStore.Mode.CAMPAIGN, campaign.entry_snapshot(0, 0))
+	var first := Texts.chapter_start(pending_chapter)
+	_queue_launch(first, CampaignStore.Mode.CAMPAIGN, campaign.entry_snapshot(first, 0))
 
 
 func _continue_game() -> void:

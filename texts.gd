@@ -23,17 +23,36 @@ extends RefCounted
 
 
 # ------------------------------------------------------------------------------
-#  1. 막과 스테이지
+#  1. 챕터, 막과 스테이지
 # ------------------------------------------------------------------------------
 #  스테이지 이름은 여기 한 곳만 고치면 타이틀 카드, 시작 배너, 왼쪽 위 표시,
 #  이어하기 표시, 앞 스테이지 클리어 화면의 "○○(으)로" 버튼에 모두 반영됩니다.
 #  ("으로/로"는 이름의 받침을 보고 자동으로 붙습니다.)
 #  세라의 대사나 다른 문장 속에 들어 있는 스테이지 이름은 따로 고쳐야 합니다.
 
-# 막 이름. 시작 배너와 스테이지 연습 화면에 "ACT 2 · 하강"처럼 나옵니다.
-const ACTS := ["진입", "하강", "방출"]
+# 챕터 하나에 한 묶음, 캠페인 순서대로.
+#   name   챕터 이름. 챕터 시작 카드, 시작 배너, 타이틀의 새 게임 버튼,
+#          스테이지 연습 화면, 챕터 클리어 화면에 나옵니다.
+#   acts   그 챕터의 막 이름. 시작 배너와 스테이지 연습 화면에
+#          "ACT 2 · 하강"처럼 나옵니다. 막 하나에 아래 STAGES의 스테이지가
+#          세 개씩 순서대로 들어가므로, 막이 셋이면 스테이지 아홉 개입니다.
+const CHAPTERS := [
+	{
+		"name": "포어맨",
+		"acts": ["진입", "하강", "방출"],
+	},
+	{
+		"name": "디스패처",
+		"acts": ["추격", "부두", "출항"],
+	},
+	{
+		"name": "에코",
+		"acts": ["항해", "플랫폼", "반향"],
+	},
+]
 
-# 스테이지 하나에 한 묶음, 캠페인 순서대로.
+# 스테이지 하나에 한 묶음, 캠페인 순서대로. 1챕터의 아홉 스테이지가 먼저 오고,
+# 다음 챕터의 스테이지는 그 뒤에 이어 붙입니다.
 #   name         스테이지 이름
 #   card         스테이지 연습 카드의 한 줄 소개
 #   sections     구간 이름 세 개 (왼쪽 위 표시, 체크포인트 이름)
@@ -133,12 +152,224 @@ const STAGES := [
 			"저게 포어맨. 그리고 저 뒤가… 바퀴야.",                        # 보스가 깨어나기 전
 		],
 	},
+	# ---- 2챕터 · 디스패처 ----
+	{
+		"name": "해안 선로",
+		"card": "열차 다리와 포대",
+		"sections": ["화물 선로", "신호소", "분기 선로"],
+		"clear_title": "해안 선로 돌파",
+		"clear_note": "선로 끝에서 바다 냄새가 난다.",
+		"says": [
+			"바퀴는 멎었는데 화물 열차는 아직 나가. 실을 게 남았다는 거야.",  # 시작 직후
+			"신호소가 살아 있어. 누가 이 선로를 아직 굴리고 있어.",            # 신호소 입구
+			"열차 무전이 잡혀. '디스패처 지시, 출항 일정 유지.'",              # 분기 선로 입구
+		],
+	},
+	{
+		"name": "절벽 철교",
+		"card": "돌풍과 공중 흡수",
+		"sections": ["강풍 구간", "교각", "철교 끝"],
+		"clear_title": "절벽 철교 돌파",
+		"clear_note": "철교 아래로 조차장의 불빛이 보인다.",
+		"says": [
+			"슈트가 공중 자세를 잡았어. 이제 뛰면서도 받을 수 있어.",          # 시작 직후
+			"포어맨도 결국 누군가의 지시를 받고 있었던 거야.",                  # 교각 입구
+			"다리 끝에 장갑 열차가 서 있어. 길을 막을 생각이야.",              # 철교 끝 입구
+		],
+	},
+	{
+		"name": "장갑 열차",
+		"card": "장갑 열차 보스전",
+		"sections": ["첫 포격", "선로 전진", "연속 포격"],
+		"clear_title": "장갑 열차 정지",
+		"clear_note": "장갑 열차가 멈췄다. 조차장 문이 열린다.",
+		"says": [
+			"저 장갑 열차가 항구로 가는 마지막 문이야.",                      # 보스가 깨어나기 전
+		],
+	},
+	{
+		"name": "조차장",
+		"card": "아래로 방출과 해치",
+		"sections": ["컨테이너 벽", "해치 구역", "적재 선로"],
+		"clear_title": "조차장 돌파",
+		"clear_note": "컨테이너마다 같은 행선지가 찍혀 있다. 켈더 해상 기지.",
+		"says": [
+			"보조 관제가 방출 제한을 풀었어. 이제 발밑으로도 쏠 수 있어.",    # 시작 직후
+			"조차장 바닥이 해치투성이야. 아래로도 길이 나 있어.",              # 해치 구역 입구
+			"컨테이너마다 같은 행선지가 찍혀 있어. 켈더 해상 기지.",            # 적재 선로 입구
+		],
+	},
+	{
+		"name": "컨테이너 부두",
+		"card": "방패 경비",
+		"sections": ["하역장", "방패 경비", "선적 부두"],
+		"clear_title": "컨테이너 부두 돌파",
+		"clear_note": "부두 끝에서 거대한 캐리어가 마지막 화물을 들어 올린다.",
+		"says": [
+			"부두에 화물선이 한 척 대 있어. 저기에 싣고 있는 거야.",            # 시작 직후
+			"경비들이 방패를 들었어. 디스패처가 나를 알아본 거야.",            # 방패 경비 입구
+			"화물선은 해상 기지로 간대. 3년 전, 그 실험이 있던 곳이야.",        # 선적 부두 입구
+		],
+	},
+	{
+		"name": "스트래들 캐리어",
+		"card": "캐리어 보스전",
+		"sections": ["첫 하역", "과적", "폭주"],
+		"clear_title": "캐리어 정지",
+		"clear_note": "캐리어가 쓰러졌다. 화물선은 이미 짐을 다 실었다.",
+		"says": [
+			"저 캐리어가 마지막 화물을 들고 있어.",                            # 보스가 깨어나기 전
+		],
+	},
+	{
+		"name": "방파제",
+		"card": "투하기와 파도",
+		"sections": ["파도 구간", "투하 구역", "등대"],
+		"clear_title": "방파제 돌파",
+		"clear_note": "방파제 끝, 관제탑의 불빛이 깜빡인다.",
+		"says": [
+			"방파제 끝에 관제탑이 있어. 디스패처는 거기 있어.",                # 시작 직후
+			"머리 위로 투하기가 떠. 파란 통은 받을 수 있어.",                  # 투하 구역 입구
+			"화물선이 시동을 걸었어. 서둘러야 해.",                            # 등대 입구
+		],
+	},
+	{
+		"name": "항만 관제탑",
+		"card": "관제탑을 오르는 종합 시험",
+		"sections": ["하층 화물칸", "중층 신호실", "관제실"],
+		"clear_title": "항만 관제탑 돌파",
+		"clear_note": "관제실 문이 열린다. 안에서 무언가가 출항을 지시하고 있다.",
+		"says": [
+			"관제탑이야. 꼭대기까지 올라가야 해.",                            # 시작 직후
+			"디스패처의 기록… 3년 전 사고 보고서에 내 이름이 있어.",            # 중층에 올라와서
+			"관제실이야. 배가 떠나기 전에 멈춰야 해.",                        # 상층에 올라와서
+		],
+	},
+	{
+		"name": "디스패처",
+		"card": "디스패처 최종전",
+		"sections": ["신호", "배차", "출항"],
+		"clear_title": "디스패처 정지",
+		"clear_note": "디스패처가 꺼졌다. 그러나 화물선은 이미 수평선 너머로 사라졌다.",
+		"says": [
+			"디스패처. 네가 이 모든 걸 실어 보냈구나.",                        # 보스가 깨어나기 전
+		],
+	},
+	# ---- 3챕터 · 에코 ----
+	{
+		"name": "화물선 갑판",
+		"card": "기우는 갑판과 반사",
+		"sections": ["선미 갑판", "중앙 갑판", "선수 갑판"],
+		"clear_title": "화물선 갑판 돌파",
+		"clear_note": "선수 해치 아래로 선창의 불빛이 새어 나온다.",
+		"says": [
+			"화물선을 따라잡았어. 켈더 해상 기지까지 반나절이야.",              # 시작 직후
+			"보조 관제가 또 슈트를 고쳐 놨어. 누가 나를 이렇게까지 돕는 거지?",  # 중앙 갑판 입구
+			"선수 쪽 해치로 선창에 내려갈 수 있어.",                            # 선수 갑판 입구
+		],
+	},
+	{
+		"name": "선창",
+		"card": "거울 포대와 반사 표적",
+		"sections": ["화물칸", "냉동 구역", "선창 승강구"],
+		"clear_title": "선창 돌파",
+		"clear_note": "승강구 위에서 함교가 배를 몰고 있다.",
+		"says": [
+			"컨테이너가 떨려. 바퀴와 항구에서 모은 운동량이 이 안에 있어.",      # 시작 직후
+			"켈더는 이 힘으로 뭘 하려는 거야…",                                # 냉동 구역 입구
+			"함교로 올라가자. 이 배를 모는 놈이 있어.",                          # 선창 승강구 입구
+		],
+	},
+	{
+		"name": "키잡이",
+		"card": "키잡이 보스전",
+		"sections": ["거울 함교", "높은 창", "폭풍"],
+		"clear_title": "키잡이 정지",
+		"clear_note": "키를 잃은 화물선이 켈더 플랫폼에 부딪히며 멈춘다.",
+		"says": [
+			"저 함교가 배를 몰고 있어. 거울 뒤에 숨어서.",                      # 보스가 깨어나기 전
+		],
+	},
+	{
+		"name": "계류 데크",
+		"card": "추적탄 발사기",
+		"sections": ["접안 부두", "크레인 아래", "승강 사다리"],
+		"clear_title": "계류 데크 돌파",
+		"clear_note": "플랫폼 위층에서 낯익은 호출 부호가 울린다.",
+		"says": [
+			"켈더 해상 기지. 3년 전 그날 이후 처음이야.",                       # 시작 직후
+			"기지가 깨어 있어. 누군가 이 화물을 기다리고 있었어.",               # 크레인 아래 입구
+			"이 호출 부호… 에코야. 그럴 리가 없어.",                            # 승강 사다리 입구
+		],
+	},
+	{
+		"name": "파이프 랙",
+		"card": "흡수 경비",
+		"sections": ["배관 통로", "흡수 구역", "플레어 탑"],
+		"clear_title": "파이프 랙 돌파",
+		"clear_note": "플레어 탑 너머에서 시추 리그가 일어선다.",
+		"says": [
+			"배관마다 운동량이 흘러. 전부 실험동으로 모이고 있어.",              # 시작 직후
+			"저 경비들, 내 충격파를 먹어. 에코의 슈트와 같은 방식이야.",         # 흡수 구역 입구
+			"사고 기록의 생존자는 한 명이었어. 나 말이야.",                     # 플레어 탑 입구
+		],
+	},
+	{
+		"name": "시추 리그",
+		"card": "시추 리그 보스전",
+		"sections": ["추적", "흡수", "굴착"],
+		"clear_title": "시추 리그 정지",
+		"clear_note": "리그가 쓰러지며 실험동으로 가는 다리가 내려온다.",
+		"says": [
+			"저 리그가 실험동으로 가는 길을 막고 있어.",                       # 보스가 깨어나기 전
+		],
+	},
+	{
+		"name": "중력 시험동",
+		"card": "저중력 실험실",
+		"sections": ["감압실", "저중력 통로", "격리문"],
+		"clear_title": "중력 시험동 돌파",
+		"clear_note": "격리문 너머에서 누군가 내 이름을 부른다.",
+		"says": [
+			"실험동이야. 중력 장치가 아직 돌아가고 있어.",                      # 시작 직후
+			"여기서 슈트를 시험했었어. 에코랑 나, 둘이서.",                     # 저중력 통로 입구
+			"격리문 너머에서 신호가 와. 에코야. 살아 있었어.",                  # 격리문 입구
+		],
+	},
+	{
+		"name": "반향실",
+		"card": "실험동을 오르는 종합 시험",
+		"sections": ["하층 시험장", "중층 관측실", "상층 제어실"],
+		"clear_title": "반향실 돌파",
+		"clear_note": "제어실 문이 열린다. 에코가 기다리고 있다.",
+		"says": [
+			"에코가 화물을 모으고 있었어. 바퀴와 항구의 힘 전부를.",            # 시작 직후
+			"사고 보고서… 그날 실험을 멈춘 건 나였어. 에코를 두고.",            # 중층에 올라와서
+			"이번엔 두고 가지 않아.",                                          # 상층에 올라와서
+		],
+	},
+	{
+		"name": "에코",
+		"card": "에코 최종전",
+		"sections": ["반사", "추격", "반향"],
+		"clear_title": "에코 정지",
+		"clear_note": "에코의 슈트가 멈췄다. 모아 둔 힘이 바다로 흩어진다.",
+		"says": [
+			"에코. 3년 만이야.",                                               # 보스가 깨어나기 전
+		],
+	},
 ]
 
 # 보스 이름. 보스 체력 표시와 왼쪽 위 표시에 나옵니다.
 const BOSS_REACTOR := "노심 수호기"
 const BOSS_GANTRY := "갠트리"
 const BOSS_FOREMAN := "포어맨"
+const BOSS_TRAIN := "장갑 열차"
+const BOSS_CARRIER := "스트래들 캐리어"
+const BOSS_DISPATCHER := "디스패처"
+const BOSS_HELMSMAN := "키잡이"
+const BOSS_RIG := "시추 리그"
+const BOSS_ECHO := "에코"
 
 
 # ------------------------------------------------------------------------------
@@ -148,12 +379,14 @@ const TITLE_CONTINUE := "이어하기"
 const TITLE_NEW_GAME := "새 게임"
 const TITLE_PRACTICE := "스테이지 연습"
 const TITLE_QUIT := "종료"
-# 이어하기 아래의 작은 글씨.
+# 이어하기 아래의 작은 글씨. {챕터}를 넣으면 챕터 이름이 나옵니다.
 const TITLE_RESUME := "{스테이지}  ·  {구간}  ·  운동량 {운동량}"
+# 새 게임 아래의 작은 글씨는 챕터 표시(CHAPTER_LABEL)입니다.
 const TITLE_NO_SAVE := "저장 없음"
 const TITLE_SAVE_UNREADABLE := "저장 파일을 읽을 수 없습니다."
 const TITLE_CANNOT_OPEN := "스테이지를 열 수 없습니다."
-# 저장이 있는데 새 게임을 고르면 뜨는 확인 창. {스테이지}는 첫 스테이지 이름.
+# 저장이 있는데 새 게임을 고르면 뜨는 확인 창. {스테이지}는 첫 스테이지 이름,
+# {챕터}는 첫 챕터 이름.
 const CONFIRM_TITLE := "새 게임"
 const CONFIRM_TEXT := "이어하기 위치를 {스테이지} 입구로 바꾸고\n새 게임을 시작할까요?"
 const CONFIRM_OK := "새 게임 시작"
@@ -178,8 +411,26 @@ const CARD_BEST := "캠페인 최고"
 const CARD_RECORD := "캠페인 최고 기록 {기록}"
 const CARD_PRACTICE_BEST := "연습 최고"
 const CARD_PRACTICE_RECORD := "연습 최고 기록 {기록}"
+# 챕터 표시. 시작 배너, 새 게임 버튼, 연습 화면, 챕터 클리어 화면에 나옵니다.
+const CHAPTER_LABEL := "CHAPTER {번호}  ·  {이름}"
+# 챕터 시작 카드의 윗줄. 아랫줄에는 챕터 이름이 크게 나옵니다.
+# 새 게임처럼 캠페인에서 챕터 첫 스테이지에 들어갈 때 한 번 뜹니다.
+const CHAPTER_CARD := "CHAPTER {번호}"
 # 막 표시. 시작 배너와 연습 화면에 나옵니다.
 const ACT_LABEL := "ACT {막}  ·  {이름}"
+# 아직 캠페인에서 들어가 보지 않은 스테이지의 카드. 1챕터는 처음부터 열려 있습니다.
+const CARD_LOCKED := "잠김"
+const CARD_LOCKED_NOTE := "캠페인에서 도달하면 열립니다"
+# 연습 화면 아래 키 안내. 위 방향키로 챕터 탭에 올라가 챕터를 바꿉니다.
+const PRACTICE_KEY_CHAPTERS := "챕터 바꾸기"
+
+# 챕터 선택. 챕터를 하나 깨면 새 게임에서 다음 챕터부터 바로 시작할 수 있습니다.
+const CHAPTER_SELECT_EYEBROW := "NEW GAME"
+const CHAPTER_SELECT_HEADING := "어디서 시작할까요"
+const CHAPTER_SELECT_NOTE := "깬 챕터의 다음 챕터부터 바로 시작할 수 있습니다. 운동량 0에서 시작합니다."
+# 챕터 버튼 오른쪽의 작은 글씨. {스테이지}는 그 챕터의 첫 스테이지 이름.
+const CHAPTER_SELECT_FROM := "{스테이지}부터"
+const CHAPTER_SELECT_CLEARED := "클리어  ·  {스테이지}부터"
 
 
 # ------------------------------------------------------------------------------
@@ -207,6 +458,11 @@ const CONTROLS := [
 	"열린 출구로 들어가기",
 	"스테이지 처음부터",
 ]
+# 2챕터부터 조작표 아래에 더해지는 줄. 키 그림은 Space+좌클릭, S+우클릭입니다.
+const CONTROLS_AIR_ABSORB := "뛰어서 공중에서 흡수"
+const CONTROLS_DOWN_RELEASE := "발밑으로 충격파 · 운동량 50"
+# 3챕터부터 더해지는 줄. 키 그림은 좌클릭+우클릭입니다.
+const CONTROLS_REFLECT := "막는 중 탄이 닿기 직전 · 반사 (W를 누르면 대각선 위)"
 
 
 # ------------------------------------------------------------------------------
@@ -231,6 +487,9 @@ const HUD_BOSS := "BOSS"
 const HUD_BOSS_DORMANT := "대기 중"
 # 클리어 화면.
 const CLEAR_HEADLINE := "STAGE CLEAR"
+# 챕터의 마지막 스테이지를 끝냈을 때의 큰 제목. 위에 챕터 표시가 붙습니다.
+# 스테이지 연습에서는 그대로 CLEAR_HEADLINE입니다.
+const CLEAR_CHAPTER_HEADLINE := "CHAPTER CLEAR"
 const CLEAR_TIME := "소요 시간"
 const CLEAR_PERFECT := "정밀 흡수"
 const CLEAR_RETRIES := "재시도"
@@ -241,6 +500,8 @@ const CLEAR_NEW_RECORD := "최고 기록 갱신"
 const CLEAR_REPLAY := "다시 플레이"
 const CLEAR_TO_TITLE := "타이틀로"
 const CLEAR_CONTINUE_KEY := "E"
+# 캠페인의 마지막 스테이지를 깼을 때 E 옆의 글씨. 누르면 에필로그가 나옵니다.
+const CLEAR_TO_EPILOGUE := "에필로그"
 
 
 # ------------------------------------------------------------------------------
@@ -471,6 +732,229 @@ const WHEEL_HINT_PERCH_CORE := ["코어가 드러났어! 대각선으로.", "바
 const WHEEL_HINT_FINALE := ["바퀴의 힘이 전부 나한테 왔어. 받은 만큼 돌려주자.", "하늘로, 같이 눌러 줘"]
 
 
+# ------------------------------------------------------------------------------
+#  14. 2챕터 공통 (열차, 돌풍, 해치, 포대, 방패 경비, 투하기, 새 능력)
+# ------------------------------------------------------------------------------
+#  2챕터부터는 1챕터에서 배운 조작은 다시 안내하지 않고, 처음 나오는 것만
+#  한 번씩 알려 줍니다.
+const NOTE_FRONT_SHIELD := "방패에 막힘 · 위나 뒤에서 노리세요"
+const SECTOR_NOTE_TURRET_DOWN := "포대 파괴"
+const SECTOR_NOTE_BOMBER_DOWN := "투하기 격추"
+const SECTOR_NOTE_HATCH := "해치 파괴"
+# 투하기의 파란 통을 받았을 때. 뒤에 얻은 양이 붙습니다.
+const SECTOR_NOTE_CANISTER := "투하물 흡수"
+const SECTOR_NOTE_BLAST_EVADED := "폭발 회피"
+# 공중에서 탄을 받았을 때. 뒤에 얻은 양이 붙습니다.
+const NOTE_AIR_ABSORB := "공중 흡수"
+const NOTE_AIR_ABSORB_PRECISE := "공중 정밀 흡수"
+# 열차 다리. 신호가 빨개지면 곧 열차가 옵니다.
+const SECTOR_HINT_TRAIN := ["열차 지붕이 다리가 돼. 올라타서 건너자.", "신호가 빨개지면 곧 열차가 와"]
+# 돌풍 구역에 처음 들어갔을 때.
+const SECTOR_HINT_GUST := ["바람이 세. 바람을 등지면 멀리, 거스르면 짧게 뛰어."]
+# 포대가 처음 조준할 때. [좌클릭]
+const SECTOR_HINT_TURRET := ["포대야. 탄을 받아서 그대로 돌려주자.", "포대를 보고 길게 눌러 줘"]
+# 머리 위로 지나가는 탄. [Space + 좌클릭]
+const SECTOR_HINT_AIR_CATCH := ["탄이 머리 위로 지나가. 뛰어서 받을게.", "뛰고 나서 탄을 보고 길게 눌러 줘"]
+# 점프로 못 오르는 높은 곳. [S + 우클릭]
+const SECTOR_HINT_DOWN := ["너무 높아. 발밑으로 쏘면 그 반동으로 튀어 올라.", "벽 앞에서 같이 눌러 줘"]
+# 금 간 해치. [S + 우클릭]
+const SECTOR_HINT_HATCH := ["금 간 해치야. 발밑으로 쏘면 깨져.", "해치 위에서 같이 눌러 줘"]
+# 방패 경비. [S + 우클릭]
+const SECTOR_HINT_FRONT_GUARD := ["방패 때문에 정면은 안 통해. 머리 위에서 내리꽂자.", "튀어 올라 경비 위에서 같이 눌러 줘"]
+# 투하기가 파란 통을 떨어뜨릴 때. [좌클릭]
+const SECTOR_HINT_BOMBER_CATCH := ["파란 통은 받을 수 있어.", "떨어지는 자리에서 길게 눌러 줘"]
+# 투하기가 빨간 통을 떨어뜨릴 때.
+const SECTOR_HINT_BOMBER_RED := ["빨간 통은 터져! 떨어지는 자리에서 비켜."]
+# 투하기가 옆으로 비켜났을 때. [W + 우클릭]
+const SECTOR_HINT_BOMBER_SHOT := ["옆으로 비켜났어. 지금 대각선으로!", "비스듬히 아래에서 같이 눌러 줘"]
+
+
+# ------------------------------------------------------------------------------
+#  15. 스테이지 2-3 · 장갑 열차 (보스)
+# ------------------------------------------------------------------------------
+const TRAIN_NOTE_WAKE := "장갑 열차 기동"
+# 관성탄을 공중에서 받았을 때.
+const TRAIN_NOTE_SHELL_CAUGHT := "관성탄 흡수 · 포문 개방"
+const TRAIN_NOTE_CORE_SHUT := "포문 잠김 · 관성탄을 공중에서 받으세요"
+const TRAIN_NOTE_STOPPED := "장갑 열차 정지"
+# 보스 체력 표시 오른쪽의 상태.
+const TRAIN_STATUS_SHUT := "포문 잠김"
+const TRAIN_STATUS_OPEN := "코어 노출"
+const TRAIN_STATUS_STOPPED := "정지"
+# 관성탄이 날아올 때. [Space + 좌클릭]
+const TRAIN_HINT_SHELL := ["큰 탄은 머리 위로 지나가. 뛰어서 받아 내자.", "뛰고 나서 열차를 보고 길게 눌러 줘"]
+# 포문이 열렸을 때. [우클릭]
+const TRAIN_HINT_CORE := ["포문이 열렸어! 앞쪽 코어야.", "다가가서 코어를 보고 눌러 줘"]
+
+
+# ------------------------------------------------------------------------------
+#  16. 스테이지 2-6 · 스트래들 캐리어 (보스)
+# ------------------------------------------------------------------------------
+const CARRIER_NOTE_WAKE := "캐리어 기동"
+const CARRIER_NOTE_CAUGHT := "컨테이너 흡수 · 지붕 개방"
+const CARRIER_NOTE_SLAB_EVADED := "과적 컨테이너 회피"
+const CARRIER_NOTE_CORE_SHUT := "지붕 잠김 · 파란 컨테이너를 받으세요"
+const CARRIER_NOTE_SHAKEN := "흔들기 · 지붕에서 떨어짐"
+const CARRIER_NOTE_STOPPED := "캐리어 정지"
+const CARRIER_STATUS_SHUT := "지붕 잠김"
+const CARRIER_STATUS_OPEN := "지붕 코어 노출"
+const CARRIER_STATUS_STOPPED := "정지"
+# 파란 컨테이너가 떨어질 때. [좌클릭]
+const CARRIER_HINT_CATCH := ["파란 컨테이너는 받을 수 있어. 받으면 지붕이 열려.", "떨어지는 자리에서 길게 눌러 줘"]
+# 빨간 컨테이너.
+const CARRIER_HINT_DODGE := ["빨간 건 너무 무거워. 비켜!"]
+# 지붕이 열렸을 때. [S + 우클릭]
+const CARRIER_HINT_CLIMB := ["지붕이 열렸어. 발밑으로 쏴서 지붕에 올라가자.", "캐리어 밑에서 같이 눌러 줘"]
+# 지붕 위, 코어 바로 위에서. [S + 우클릭]
+const CARRIER_HINT_STOMP := ["코어 바로 위야. 내리꽂자!", "같이 눌러 줘"]
+
+
+# ------------------------------------------------------------------------------
+#  17. 스테이지 2-9 · 디스패처 (2챕터 최종 보스)
+# ------------------------------------------------------------------------------
+const DISPATCHER_NOTE_WAKE := "디스패처 기동"
+const DISPATCHER_NOTE_SHELL := "관성탄 흡수 · 신호 차폐 해제"
+const DISPATCHER_NOTE_SHIELDED := "신호 차폐 · 관성탄을 공중에서 받으세요"
+const DISPATCHER_NOTE_CAUGHT := "컨테이너 흡수 · 지붕 개방"
+const DISPATCHER_NOTE_ROOF_SHUT := "지붕 잠김 · 파란 컨테이너를 받으세요"
+const DISPATCHER_NOTE_WIND := "바람이 바뀐다"
+const DISPATCHER_NOTE_STOPPED := "디스패처 정지"
+const DISPATCHER_STATUS_SIGNAL := "신호 차폐"
+const DISPATCHER_STATUS_OPEN := "코어 노출"
+const DISPATCHER_STATUS_ROOF := "지붕 잠김"
+const DISPATCHER_STATUS_STOPPED := "정지"
+# 신호탑이 관성탄을 쏠 때. [Space + 좌클릭]
+const DISPATCHER_HINT_SHELL := ["신호탑이 관성탄을 쏴. 공중에서 받으면 차폐가 풀려.", "뛰고 나서 신호탑을 보고 길게 눌러 줘"]
+# 차폐가 풀렸을 때. [W + 우클릭]
+const DISPATCHER_HINT_CORE := ["차폐가 풀렸어! 바닥 표식에서 대각선으로.", "바닥 표식 위에서 같이 눌러 줘"]
+# 파란 컨테이너. [좌클릭]
+const DISPATCHER_HINT_CATCH := ["파란 컨테이너야. 받으면 지붕이 열려.", "떨어지는 자리에서 길게 눌러 줘"]
+# 지붕이 열렸을 때. [S + 우클릭]
+const DISPATCHER_HINT_STOMP := ["지붕으로 튀어 올라서 내리꽂자.", "밑에서 한 번, 지붕 위에서 한 번"]
+
+
+# ------------------------------------------------------------------------------
+#  18. 3챕터 공통 (반사, 기우는 갑판, 화물 통, 거울 포대, 반사 표적, 추적탄,
+#      흡수 경비, 저중력 실험실)
+# ------------------------------------------------------------------------------
+#  3챕터도 처음 나오는 것만 한 번씩 알려 줍니다. 반사의 키 그림은
+#  좌클릭+우클릭(위로 반사는 좌클릭+W+우클릭)입니다.
+# 탄을 반사했을 때.
+const NOTE_REFLECT := "반사"
+const NOTE_REFLECT_AIR := "공중 반사"
+const SECTOR_NOTE_MIRROR := "거울에 반사됨 · 탄을 되돌려 맞히세요"
+const SECTOR_NOTE_MIRROR_DOWN := "거울 포대 파괴"
+const SECTOR_NOTE_LAUNCHER_ARMOR := "장갑 · 추적탄을 반사해 맞히세요"
+const SECTOR_NOTE_LAUNCHER_DOWN := "발사기 파괴"
+const SECTOR_NOTE_ABSORBED := "흡수됨 · 되돌아오는 큰 탄을 반사하세요"
+const SECTOR_NOTE_ABSORBER_DOWN := "흡수 경비 쓰러짐"
+const SECTOR_NOTE_TARGET := "표적 명중"
+const SECTOR_NOTE_TARGET_SHOCK := "표적은 반사한 탄에만 반응합니다"
+# 추적탄이나 화물 통을 받았을 때. 뒤에 얻은 양이 붙습니다.
+const SECTOR_NOTE_MISSILE := "추적탄 흡수"
+const SECTOR_NOTE_BARREL := "화물 통 흡수"
+# 탄이 처음 날아올 때. [좌클릭 + 우클릭]
+const SECTOR_HINT_REFLECT := ["막고 있다가 닿기 직전에 우클릭하면 탄을 되돌려 줄 수 있어.", "막는 중 닿기 직전에 눌러 줘"]
+# 배가 처음 기울 때.
+const SECTOR_HINT_TILT := ["배가 기울어! 비탈 아래로 미끄러져."]
+# 파란 화물 통이 굴러올 때. [좌클릭]
+const SECTOR_HINT_BARREL := ["화물 통이 굴러와. 파란 건 받아서 힘으로 쓰자.", "통을 보고 길게 눌러 줘"]
+# 빨간 화물 통이 굴러올 때. [Space]
+const SECTOR_HINT_BARREL_RED := ["빨간 통은 너무 무거워. 뛰어넘자!", "닿기 직전에 눌러 줘"]
+# 거울 포대. [좌클릭 + 우클릭]
+const SECTOR_HINT_MIRROR := ["거울 포대야. 충격파는 되돌아와. 저 탄을 반사해서 맞히자.", "막는 중 닿기 직전에 눌러 줘"]
+# 반사 표적. [좌클릭 + W + 우클릭]
+const SECTOR_HINT_TARGET := ["표적은 반사한 탄에만 반응해. 표식에서 위로 되돌리자.", "바닥 표식에서 W를 누른 채 반사"]
+# 추적탄이 날아올 때. [좌클릭 + 우클릭]
+const SECTOR_HINT_HOMING := ["추적탄이야! 받거나, 반사해서 발사기로 돌려보내자.", "막는 중 닿기 직전에 눌러 줘"]
+# 흡수 경비. [좌클릭 + 우클릭]
+const SECTOR_HINT_ABSORBER := ["흡수 경비야. 충격파를 먹고 큰 탄으로 돌려줘.", "큰 탄이 오면 막는 중 반사"]
+const SECTOR_HINT_ABSORBER_ECHO := ["큰 탄이 돌아온다! 반사해서 되돌려 줘.", "막는 중 닿기 직전에 눌러 줘"]
+# 저중력 구역에 처음 들어갔을 때.
+const SECTOR_HINT_LOW_GRAVITY := ["중력이 약해. 높이 뛸 수 있고, 탄도 느려져."]
+
+
+# ------------------------------------------------------------------------------
+#  19. 스테이지 3-3 · 키잡이 (보스)
+# ------------------------------------------------------------------------------
+const HELM_NOTE_WAKE := "키잡이 기동"
+# 충격파가 거울 함교에 맞았을 때.
+const HELM_NOTE_MIRROR := "거울 함교 · 충격파가 되돌아옵니다"
+# 포문이 닫혀 있을 때 되돌린 탄이 맞았을 때.
+const HELM_NOTE_SHUT := "포문 닫힘 · 포문이 열렸을 때 되돌리세요"
+# 키가 없는 곳에 되돌린 탄이 맞았을 때.
+const HELM_NOTE_ARMOR := "장갑 · 키가 있는 창을 노리세요"
+const HELM_NOTE_STOPPED := "키잡이 정지"
+const HELM_STATUS_SHUT := "거울 차폐"
+const HELM_STATUS_OPEN := "포문 개방"
+const HELM_STATUS_STOPPED := "정지"
+# 1페이즈. [좌클릭 + 우클릭]
+const HELM_HINT_REFLECT := ["거울이라 충격파는 되돌아와. 저 탄을 반사해서 포문에 넣자.", "막는 중 닿기 직전에 눌러 줘"]
+# 2페이즈, 키가 높은 창에 있을 때. [좌클릭 + W + 우클릭]
+const HELM_HINT_HIGH := ["키가 위 창으로 올라갔어. 표식에서 위로 되돌리자.", "바닥 표식에서 W를 누른 채 반사"]
+
+
+# ------------------------------------------------------------------------------
+#  20. 스테이지 3-6 · 시추 리그 (보스)
+# ------------------------------------------------------------------------------
+const RIG_NOTE_WAKE := "시추 리그 기동"
+const RIG_NOTE_POD_SHUT := "포드 잠김 · 접시에 쏘고 돌아오는 큰 탄을 반사하세요"
+const RIG_NOTE_DRANK := "흡수 접시 · 큰 탄이 돌아옵니다"
+const RIG_NOTE_STOPPED := "시추 리그 정지"
+const RIG_STATUS_POD := "포드 개방"
+const RIG_STATUS_DISH := "흡수 접시"
+const RIG_STATUS_STOPPED := "정지"
+# 1페이즈, 추적탄이 날아올 때. [좌클릭 + 우클릭]
+const RIG_HINT_MISSILE := ["추적탄을 포드로 돌려보내자.", "막는 중 닿기 직전에 눌러 줘"]
+# 2페이즈, 포드가 잠겼을 때. [우클릭]
+const RIG_HINT_DISH := ["포드가 잠겼어. 접시에 쏘면 큰 탄으로 돌아와. 그걸 되돌리자.", "접시를 보고 눌러 줘"]
+# 굴착기가 내려찍을 때.
+const RIG_HINT_DRILL := ["굴착기가 내려찍어! 붉은 파동을 뛰어넘자."]
+
+
+# ------------------------------------------------------------------------------
+#  21. 스테이지 3-9 · 에코 (3챕터 최종 보스)
+# ------------------------------------------------------------------------------
+const ECHO_NOTE_WAKE := "에코 기동"
+# 에코가 세라의 충격파를 받았을 때.
+const ECHO_NOTE_ABSORBED := "에코가 흡수 · 돌아오는 탄을 반사하세요"
+# 되돌린 탄이 에코에게 맞았을 때.
+const ECHO_NOTE_STAGGER := "균형 붕괴 · 지금 충격파"
+# 3페이즈에서 에코가 되돌린 탄을 한 번 더 되받아쳤을 때.
+const ECHO_NOTE_RALLY := "에코가 되받아쳤다 · 한 번 더 반사하세요"
+const ECHO_NOTE_STOPPED := "에코 정지"
+const ECHO_STATUS_GUARD := "흡수 자세"
+const ECHO_STATUS_OPEN := "균형 붕괴"
+const ECHO_STATUS_STOPPED := "정지"
+# 페이즈가 바뀔 때 에코가 하는 말. 화면 가운데 알림으로 나옵니다.
+const ECHO_TAUNTS := [
+	"에코: 받은 만큼 돌려준다. 네가 가르쳐 준 거야, 세라.",
+	"에코: 3년 동안 여기서 힘을 모았어. 바퀴도, 항구도.",
+]
+# 에코가 탄을 쏠 때. [좌클릭 + 우클릭]
+const ECHO_HINT_REFLECT := ["에코는 내 충격파를 받아서 돌려줘. 먼저 저 탄을 되돌리자.", "막는 중 닿기 직전에 눌러 줘"]
+# 운동량이 모자랄 때. [좌클릭]
+const ECHO_HINT_ENERGY := ["힘이 모자라. 탄 하나는 받아서 힘으로 바꾸자.", "탄을 보고 길게 눌러 줘"]
+# 에코가 흔들렸을 때. [우클릭]
+const ECHO_HINT_STRIKE := ["흔들렸어! 지금이야.", "에코를 보고 눌러 줘"]
+# 에코가 돌진할 때.
+const ECHO_HINT_DASH := ["돌진이야! 뛰어넘자."]
+
+
+# ------------------------------------------------------------------------------
+#  22. 에필로그 · 캠페인의 마지막 스테이지를 깬 뒤
+# ------------------------------------------------------------------------------
+#  클리어 화면에서 E를 누르면 한 줄씩 나타납니다. 줄 수는 바꿔도 됩니다.
+const EPILOGUE_EYEBROW := "EPILOGUE"
+const EPILOGUE := [
+	"에코: …네 슈트의 제한을 푼 건 내가 아니야, 세라.",
+	"에코: 바퀴도, 항구도, 이 기지도. 전부 한 사람이 그린 설계도였어.",
+	"보조 관제 신호의 발신지는 켈더가 아니었다.",
+	"그 끝에, 설계자가 있다.",
+]
+const EPILOGUE_END := "다음 이야기에서"
+
+
 # ==============================================================================
 #  아래는 문구가 아니라 위의 문구를 꺼내 쓰는 코드입니다. 고칠 필요가 없습니다.
 # ==============================================================================
@@ -501,14 +985,87 @@ static func say(index: int, line: int) -> String:
 	return lines[line] if line >= 0 and line < lines.size() else ""
 
 
-## "ACT 2  ·  하강" for the act the stage belongs to (three stages per act).
+## Stages in one act. A chapter of three acts holds nine stages; STAGES lists
+## every chapter's stages one after another, in campaign order.
+const STAGES_PER_ACT := 3
+
+
+## How many stages the chapter holds, or 0 for no chapter.
+static func chapter_size(chapter: int) -> int:
+	if chapter < 0 or chapter >= CHAPTERS.size():
+		return 0
+	return CHAPTERS[chapter]["acts"].size() * STAGES_PER_ACT
+
+
+## The campaign index of the chapter's first stage.
+static func chapter_start(chapter: int) -> int:
+	var first := 0
+	for earlier in clampi(chapter, 0, CHAPTERS.size()):
+		first += chapter_size(earlier)
+	return first
+
+
+## The chapter the stage at `index` belongs to, or -1 for a scene outside every chapter.
+static func chapter_of(index: int) -> int:
+	if index < 0:
+		return -1
+	var end := 0
+	for chapter in CHAPTERS.size():
+		end += chapter_size(chapter)
+		if index < end:
+			return chapter
+	return -1
+
+
+static func chapter_name(chapter: int) -> String:
+	return CHAPTERS[chapter]["name"] if chapter >= 0 and chapter < CHAPTERS.size() else ""
+
+
+## "CHAPTER 1  ·  포어맨", or an empty string for no chapter.
+static func chapter_label(chapter: int) -> String:
+	if chapter < 0 or chapter >= CHAPTERS.size():
+		return ""
+	return CHAPTER_LABEL.format({"번호": chapter + 1, "이름": chapter_name(chapter)})
+
+
+## The upper line of the card that opens the chapter: "CHAPTER 1".
+static func chapter_card(chapter: int) -> String:
+	if chapter < 0 or chapter >= CHAPTERS.size():
+		return ""
+	return CHAPTER_CARD.format({"번호": chapter + 1, "이름": chapter_name(chapter)})
+
+
+## True for the first stage of a chapter.
+static func opens_chapter(index: int) -> bool:
+	var chapter := chapter_of(index)
+	return chapter >= 0 and index == chapter_start(chapter)
+
+
+## True for the last stage of a chapter.
+static func closes_chapter(index: int) -> bool:
+	var chapter := chapter_of(index)
+	return chapter >= 0 and index == chapter_start(chapter) + chapter_size(chapter) - 1
+
+
+## The stage's place in its own chapter, counting from 1.
+static func stage_in_chapter(index: int) -> int:
+	var chapter := chapter_of(index)
+	return index - chapter_start(chapter) + 1 if chapter >= 0 else index + 1
+
+
+## "ACT 2  ·  하강" for the act the stage belongs to, or an empty string for no chapter.
 static func act_label(index: int) -> String:
-	var act := clampi(floori(index / 3.0), 0, ACTS.size() - 1)
-	return ACT_LABEL.format({"막": act + 1, "이름": ACTS[act]})
+	var chapter := chapter_of(index)
+	if chapter < 0:
+		return ""
+	var acts: Array = CHAPTERS[chapter]["acts"]
+	var act := clampi(floori((index - chapter_start(chapter)) / float(STAGES_PER_ACT)), 0, acts.size() - 1)
+	return ACT_LABEL.format({"막": act + 1, "이름": acts[act]})
 
 
+## "STAGE 04", numbered within the stage's chapter.
 static func stage_number(index: int) -> String:
-	return HUD_STAGE.format({"번호": "%02d" % (index + 1)})
+	return HUD_STAGE.format({"번호": "%02d" % stage_in_chapter(index)})
 
 
 ## "냉각탑으로", "동력로로": the name with the particle that fits its last sound.

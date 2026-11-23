@@ -9,6 +9,11 @@ const MenuTheme = preload("res://scripts/menu_theme.gd")
 @export var caption := ""
 @export var font_size := 25
 @export var compact := false
+## Half lit even without focus: the tab of the chapter being looked at.
+var selected := false:
+	set(value):
+		selected = value
+		queue_redraw()
 
 ## 0 → hidden, 1 → in place. Driven by the owning menu's intro tween.
 var reveal := 1.0:
@@ -46,7 +51,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if reveal <= 0.0:
 		return
-	var eased := ease(_glow, -2.0)
+	var eased := ease(maxf(_glow, 0.4 if selected else 0.0), -2.0)
 	var alpha := reveal * (0.42 if disabled else 1.0)
 	var slide := (1.0 - reveal) * -46.0
 	draw_set_transform(Vector2(slide, 0.0))

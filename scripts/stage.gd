@@ -15,6 +15,10 @@ const WAVE_RANGE := 326.0
 const WAVE_SPEED := 1520.0
 const ICE := Color("#76e4ff")
 const HEAT := Color("#ffa475")
+## How long the chapter card stays up before the stage banner.
+const CHAPTER_CARD_TIME := 3.0
+## Seconds between the epilogue's lines after the campaign's last stage.
+const EPILOGUE_LINE_TIME := 2.6
 
 @export_file("*.tscn") var next_scene := ""
 ## Words for the result screen. A stage in the campaign list takes these from
@@ -33,7 +37,15 @@ var complete := false
 var entry_charge := 0
 var play_mode: CampaignStore.Mode = CampaignStore.Mode.DIRECT
 var initial_checkpoint: Dictionary = {}
+## True when this visit is R pressed during the same stage.
+var replay := false
+## True when this visit opened its chapter with the chapter card.
+var chapter_card := false
+## Seconds the chapter card still covers the stage. The world waits behind it.
+var card_left := 0.0
 var clear_charge := 0
+## Seconds since the epilogue began; negative until E opens it.
+var epilogue_age := -1.0
 var new_record := false
 var checkpoint := 0
 var checkpoint_position := Vector2.ZERO
@@ -83,6 +95,10 @@ var wave_hits: Array[Node2D] = []
 
 func _ready() -> void:
 	_use_campaign_text()
+	var index := stage_number()
+	sera.air_absorb = index >= CampaignStore.AIR_ABSORB_FROM
+	sera.down_release = index >= CampaignStore.DOWN_RELEASE_FROM
+	sera.reflect = index >= CampaignStore.REFLECT_FROM
 	sound_voices = Audio.prepare(sound, &"Effects", 12)
 	room_tone = Audio.start_room(self, Audio.stage_room(stage_number()), -3.5)
 	checkpoint_position = sera.global_position
@@ -114,6 +130,7 @@ func _ready() -> void:
 		exit_portal.position = exit_spot
 		sera.get_parent().add_child(exit_portal)
 		sera.get_parent().move_child(exit_portal, sera.get_index())
+	_open_chapter_card()
 	_save_progress()
 
 
@@ -147,6 +164,25 @@ func boss_label(boss: String) -> String:
 	return "%s  /  %s" % [Texts.stage_name(stage_number()), boss]
 
 
+## A campaign visit that enters a chapter at its very start opens with the
+## chapter card: new game, or arriving from the previous chapter. Resuming from
+## a checkpoint and pressing R skip it. The stage clock starts after the card.
+func _open_chapter_card() -> void:
+	if play_mode != CampaignStore.Mode.CAMPAIGN or replay or checkpoint > 0 or elapsed > 0.0:
+		return
+	if not Texts.opens_chapter(stage_number()):
+		return
+	chapter_card = true
+	card_left = CHAPTER_CARD_TIME
+	get_tree().paused = true
+
+
+func _close_chapter_card() -> void:
+	card_left = 0.0
+	if freeze_left <= 0.0 and not player_paused:
+		get_tree().paused = false
+
+
 ## One of this stage's story lines from texts.gd.
 func story(line: int) -> String:
 	return Texts.say(stage_number(), line)
@@ -170,12 +206,18 @@ func _process(delta: float) -> void:
 	if player_paused:
 		return
 	clock += delta
-	if not complete:
+	if epilogue_age >= 0.0:
+		epilogue_age += delta
+	if card_left > 0.0:
+		card_left = maxf(0.0, card_left - delta)
+		if card_left == 0.0:
+			_close_chapter_card()
+	elif not complete:
 		elapsed += delta
 	feedback_left = maxf(0.0, feedback_left - delta)
 	if freeze_left > 0.0:
 		freeze_left = maxf(0.0, freeze_left - delta)
-		if freeze_left == 0.0:
+		if freeze_left == 0.0 and card_left == 0.0:
 			get_tree().paused = false
 	else:
 		flash = move_toward(flash, 0.0, 2.25 * delta)
@@ -192,9 +234,20 @@ func _physics_process(delta: float) -> void:
 	if ignore_resume_input:
 		ignore_resume_input = false
 		return
+	if epilogue_age >= 0.0:
+		# The story's last words: E shows them all, then goes to the title.
+		if Input.is_action_just_pressed(&"continue_stage"):
+			if epilogue_done():
+				_leave_stage()
+			else:
+				epilogue_age = epilogue_length()
+		return
 	if Input.is_action_just_pressed(&"restart"):
 		var mode := CampaignStore.Mode.PRACTICE if complete and play_mode == CampaignStore.Mode.CAMPAIGN else play_mode
-		_queue_stage(scene_file_path, entry_charge, mode)
+		_queue_stage(scene_file_path, entry_charge, mode, true)
+		return
+	if complete and has_epilogue() and Input.is_action_just_pressed(&"continue_stage"):
+		epilogue_age = 0.0
 		return
 	if complete and not next_scene.is_empty() and Input.is_action_just_pressed(&"continue_stage"):
 		if play_mode == CampaignStore.Mode.PRACTICE or (play_mode == CampaignStore.Mode.CAMPAIGN and campaign.stage_index(scene_file_path) == CampaignStore.SCENES.size() - 1):
@@ -202,7 +255,7 @@ func _physics_process(delta: float) -> void:
 		else:
 			_queue_stage(next_scene, clear_charge, play_mode)
 		return
-	if exiting:
+	if exiting or card_left > 0.0:
 		return
 	sera.read_input()
 	if freeze_left > 0.0:
@@ -265,15 +318,15 @@ func _enter_exit() -> void:
 	tween.chain().tween_callback(_finish_stage)
 
 
-func _queue_stage(scene_path: String, charge: int, mode: CampaignStore.Mode) -> void:
+func _queue_stage(scene_path: String, charge: int, mode: CampaignStore.Mode, replay_stage := false) -> void:
 	scene_changing = true
-	_switch_stage.call_deferred(scene_path, charge, mode)
+	_switch_stage.call_deferred(scene_path, charge, mode, replay_stage)
 
 
-func _switch_stage(scene_path: String, charge: int, mode: CampaignStore.Mode) -> void:
+func _switch_stage(scene_path: String, charge: int, mode: CampaignStore.Mode, replay_stage := false) -> void:
 	var index := campaign.stage_index(scene_path)
 	await Audio.drain(self)
-	var result := campaign.open_stage(index, mode, campaign.entry_snapshot(index, charge))
+	var result := campaign.open_stage(index, mode, campaign.entry_snapshot(index, charge), replay_stage)
 	if result != OK:
 		scene_changing = false
 		if not complete:
@@ -289,14 +342,21 @@ func _input(event: InputEvent) -> void:
 
 func _set_player_pause(value: bool) -> void:
 	player_paused = value
-	get_tree().paused = value or freeze_left > 0.0
+	get_tree().paused = value or freeze_left > 0.0 or card_left > 0.0
 	for voice in sound_voices:
 		voice.stream_paused = value
 	room_tone.stream_paused = value
 	if value:
 		var heading: String = call(&"hud_section") if has_method(&"hud_section") else ""
 		var detail := Texts.PAUSE_DETAIL.format({"시간": campaign.time_label(roundi(elapsed * 1000.0)), "정밀": perfect_shots, "재시도": retries})
-		pause_menu.open_menu(not complete, play_mode == CampaignStore.Mode.CAMPAIGN, heading, detail)
+		var extra := []
+		if sera.air_absorb:
+			extra.append([["Space", "+", "LMB"], Texts.CONTROLS_AIR_ABSORB])
+		if sera.down_release:
+			extra.append([["S", "+", "RMB"], Texts.CONTROLS_DOWN_RELEASE])
+		if sera.reflect:
+			extra.append([["LMB", "+", "RMB"], Texts.CONTROLS_REFLECT])
+		pause_menu.open_menu(not complete, play_mode == CampaignStore.Mode.CAMPAIGN, heading, detail, extra)
 	else:
 		ignore_resume_input = true
 		pause_menu.close_menu()
@@ -330,9 +390,26 @@ func _switch_to_title() -> void:
 
 
 func result_action_label() -> String:
+	if has_epilogue():
+		return Texts.CLEAR_TO_EPILOGUE
 	if play_mode == CampaignStore.Mode.PRACTICE or (play_mode == CampaignStore.Mode.CAMPAIGN and campaign.stage_index(scene_file_path) == CampaignStore.SCENES.size() - 1):
 		return Texts.CLEAR_TO_TITLE
 	return continue_caption
+
+
+## The campaign's last stage ends with the epilogue before the title.
+func has_epilogue() -> bool:
+	return play_mode == CampaignStore.Mode.CAMPAIGN and stage_number() == CampaignStore.SCENES.size() - 1 \
+		and not Texts.EPILOGUE.is_empty()
+
+
+## Seconds until every epilogue line and the closing words are on screen.
+func epilogue_length() -> float:
+	return EPILOGUE_LINE_TIME * (Texts.EPILOGUE.size() + 1) + 0.6
+
+
+func epilogue_done() -> bool:
+	return epilogue_age >= epilogue_length()
 
 
 func _save_progress() -> void:
@@ -431,6 +508,7 @@ func _respawn() -> void:
 	retries += 1
 	retry_left = 0.0
 	freeze_left = 0.0
+	card_left = 0.0
 	get_tree().paused = false
 	flash = 0.0
 	shake = 0.0
@@ -475,6 +553,12 @@ func _advance_wave(delta: float) -> void:
 			_show_feedback(Texts.NOTE_SHIELDED, HEAT)
 			_play(Audio.ARMOR, -4.0)
 			continue
+		if guard.shield_blocks(wave_direction):
+			guard.flash_shield()
+			effects.impact(hit_point + Vector2(guard.attack_direction * 52.0, 0.0), false)
+			_show_feedback(Texts.NOTE_FRONT_SHIELD, HEAT)
+			_play(Audio.ARMOR, -4.0)
+			continue
 		guard.knockback(signf(wave_direction.x))
 		effects.impact(hit_point, true)
 		_on_guard_hit(guard)
@@ -498,7 +582,12 @@ func _resolve_stage_wave(_next_distance: float) -> void:
 
 
 func _on_release(origin: Vector2, direction: Vector2) -> void:
-	learn(&"release_up" if direction.y < 0.0 else &"release")
+	if direction.y > 0.5:
+		learn(&"release_down")
+		# The blast at her feet: a ring on the floor and a kick of dust.
+		effects.impact(origin + Vector2(0.0, 6.0), true, false)
+	else:
+		learn(&"release_up" if direction.y < 0.0 else &"release")
 	wave_origin = origin
 	wave_direction = direction
 	wave_distance = 0.0
@@ -517,7 +606,7 @@ func _on_release(origin: Vector2, direction: Vector2) -> void:
 			wave_limit = maxf(0.0, (point - origin).dot(direction))
 	wave_active = wave_limit > 0.0
 	if wave_active:
-		effects.release(origin, direction, WAVE_SPEED, wave_limit)
+		effects.release(origin, direction, WAVE_SPEED, maxf(wave_limit, 60.0) if direction.y > 0.5 else wave_limit)
 	else:
 		effects.impact(chest + Vector2(direction.x * 22.0, 0.0), false)
 	_play(Audio.WAVE, -3.0, 1.05 if direction.y < 0.0 else 1.0)
@@ -549,6 +638,10 @@ func _on_guard_hit(_guard: Guard) -> void:
 ## object-specific hints in `stage_hints`; these generic ones cover the rest.
 func hud_hints() -> Array:
 	var hints := []
+	# Chapter one teaches the basic controls; later chapters only explain what is new.
+	if not tutorial_stage():
+		hints.append_array(stage_hints())
+		return hints
 	if not knows(&"evade") and _incoming(true):
 		hints.append(hint(&"evade", Vector2.INF, spoken(Texts.HINT_EVADE, [["Space"]]), HEAT))
 	if not knows(&"absorb_shot") and _incoming(false):
@@ -570,6 +663,11 @@ func hud_hints() -> Array:
 
 func stage_hints() -> Array:
 	return []
+
+
+## True in chapter one, where Sera still explains every control.
+func tutorial_stage() -> bool:
+	return Texts.chapter_of(stage_number()) <= 0
 
 
 ## A line Sera says to the player. `at` is the object she is talking about
@@ -606,23 +704,61 @@ func _on_enemy_warning(sweep: bool) -> void:
 
 
 func _on_enemy_fire(origin: Vector2, direction: float, sweep: bool) -> void:
+	fire_shot(origin, direction, sweep)
+	_play(Audio.SWEEP if sweep else Audio.SHOT, -8.0)
+	if sweep:
+		effects.impact(origin, false)
+
+
+## A bolt, sweep or heavy shell from a machine, wired to this stage's catch,
+## evade and reflect handlers.
+func fire_shot(origin: Vector2, direction: float, sweep: bool = false, heavy: bool = false, source: Node = null) -> Incoming:
 	var shot := Incoming.new()
 	shot.position = origin
 	shot.player = sera
 	shot.direction = direction
 	shot.sweep = sweep
+	shot.heavy = heavy
+	shot.level = self
+	shot.source = source
 	shot.absorbed.connect(_on_shot_absorbed)
 	shot.evaded.connect(_on_sweep_evaded)
+	shot.reflected.connect(_on_shot_reflected)
 	shots.add_child(shot)
-	_play(Audio.SWEEP if sweep else Audio.SHOT, -8.0)
-	if sweep:
-		effects.impact(origin, false)
+	return shot
+
+
+## A reflected shot flew from `from` to `to` this frame: true when it struck
+## something and is spent. Stages with things to hit override this.
+func returned_hit(_from: Vector2, _to: Vector2, _shot: Node2D) -> bool:
+	return false
+
+
+## True when the segment passes within `radius` of `point`.
+static func crosses(from: Vector2, to: Vector2, point: Vector2, radius: float) -> bool:
+	return Geometry2D.get_closest_point_to_segment(point, from, to).distance_to(point) <= radius
+
+
+func _on_shot_reflected(origin: Vector2, heavy: bool) -> void:
+	learn(&"reflect")
+	if sera.reflect_up:
+		learn(&"reflect_up")
+	var message: String = Texts.NOTE_REFLECT_AIR if not sera.is_on_floor() else Texts.NOTE_REFLECT
+	_show_feedback(message, Color("#ffe09a"))
+	effects.catch_shot(origin, true)
+	effects.impact(origin, heavy, false)
+	_play(Audio.PRECISE_CATCH, -2.0, 1.3)
+	_play(Audio.WAVE, -9.0, 1.45)
+	_hitstop(0.09 if heavy else 0.07, 7.0, 0.12, Color("#ffe09a"))
 
 
 func _on_shot_absorbed(origin: Vector2, charge: int, precise: bool) -> void:
 	caught_shots += 1
 	learn(&"absorb_shot")
 	var message: String = Texts.NOTE_ABSORB_PRECISE if precise else Texts.NOTE_ABSORB
+	if not sera.is_on_floor():
+		learn(&"air_catch")
+		message = Texts.NOTE_AIR_ABSORB_PRECISE if precise else Texts.NOTE_AIR_ABSORB
 	if precise:
 		perfect_shots += 1
 	if charge > 0:

@@ -28,8 +28,28 @@ const SCENES := [
 	"res://scenes/outer_ring.tscn",
 	"res://scenes/control_spine.tscn",
 	"res://scenes/great_wheel.tscn",
+	"res://scenes/coastal_line.tscn",
+	"res://scenes/cliff_bridge.tscn",
+	"res://scenes/armored_train.tscn",
+	"res://scenes/rail_yard.tscn",
+	"res://scenes/container_wharf.tscn",
+	"res://scenes/straddle_carrier.tscn",
+	"res://scenes/breakwater.tscn",
+	"res://scenes/harbor_tower.tscn",
+	"res://scenes/dispatcher.tscn",
+	"res://scenes/cargo_deck.tscn",
+	"res://scenes/cargo_hold.tscn",
+	"res://scenes/helmsman.tscn",
+	"res://scenes/mooring_deck.tscn",
+	"res://scenes/pipe_rack.tscn",
+	"res://scenes/drill_rig.tscn",
+	"res://scenes/gravity_lab.tscn",
+	"res://scenes/echo_chamber.tscn",
+	"res://scenes/echo.tscn",
 ]
-## Key art per stage: the preferred painting, then the stand-in used until it exists.
+## Key art per stage: the preferred painting, then the stand-in used until it
+## exists. Stages without a stand-in draw a skyline in code instead (the third
+## entry names which one, see skyline.gd).
 const ART := [
 	["res://assets/environment/foundry.jpg", ""],
 	["res://assets/environment/cooling_tower.jpg", ""],
@@ -40,7 +60,29 @@ const ART := [
 	["res://assets/environment/outer_ring.jpg", "res://assets/environment/reactor.jpg"],
 	["res://assets/environment/control_spine.jpg", "res://assets/environment/cooling_tower.jpg"],
 	["res://assets/environment/great_wheel.jpg", "res://assets/environment/reactor.jpg"],
+	["res://assets/environment/coastal_line.jpg", "", "coast"],
+	["res://assets/environment/cliff_bridge.jpg", "", "bridge"],
+	["res://assets/environment/armored_train.jpg", "", "railyard"],
+	["res://assets/environment/rail_yard.jpg", "", "yard"],
+	["res://assets/environment/container_wharf.jpg", "", "wharf"],
+	["res://assets/environment/straddle_carrier.jpg", "", "dock"],
+	["res://assets/environment/breakwater.jpg", "", "breakwater"],
+	["res://assets/environment/harbor_tower.jpg", "", "tower"],
+	["res://assets/environment/dispatcher.jpg", "", "pier"],
+	["res://assets/environment/cargo_deck.jpg", "", "ship"],
+	["res://assets/environment/cargo_hold.jpg", "", "hold"],
+	["res://assets/environment/helmsman.jpg", "", "storm"],
+	["res://assets/environment/mooring_deck.jpg", "", "kelder"],
+	["res://assets/environment/pipe_rack.jpg", "", "pipes"],
+	["res://assets/environment/drill_rig.jpg", "", "rig"],
+	["res://assets/environment/gravity_lab.jpg", "", "lab"],
+	["res://assets/environment/echo_chamber.jpg", "", "chamber"],
+	["res://assets/environment/echo.jpg", "", "core"],
 ]
+## First stage (campaign index) where each later ability is switched on.
+const AIR_ABSORB_FROM := 10
+const DOWN_RELEASE_FROM := 12
+const REFLECT_FROM := 18
 
 var _profile: Dictionary = _blank_profile()
 var _practice_records: Dictionary = {}
@@ -74,7 +116,7 @@ static func _blank_profile() -> Dictionary:
 	var records := []
 	records.resize(SCENES.size())
 	records.fill(0)
-	return {"version": SAVE_VERSION, "resume": {}, "best_ms": records}
+	return {"version": SAVE_VERSION, "resume": {}, "best_ms": records, "reached": 0}
 
 
 ## True when the stage's own painting has been added to the project.
@@ -82,8 +124,18 @@ static func has_own_art(index: int) -> bool:
 	return ResourceLoader.exists(ART[index][0])
 
 
+## The stage's painting or its stand-in, or null when it is drawn in code.
 static func stage_art(index: int) -> Texture2D:
-	return load(ART[index][0] if has_own_art(index) else ART[index][1])
+	if has_own_art(index):
+		return load(ART[index][0])
+	return load(ART[index][1]) if not String(ART[index][1]).is_empty() else null
+
+
+## The code-drawn skyline for a stage without a painting, or an empty name.
+static func skyline(index: int) -> String:
+	if index < 0 or index >= ART.size() or has_own_art(index) or ART[index].size() < 3:
+		return ""
+	return ART[index][2]
 
 
 func reload_profile() -> void:
@@ -102,6 +154,14 @@ func reload_profile() -> void:
 	if records is Array:
 		for i in mini(records.size(), SCENES.size()):
 			_profile["best_ms"][i] = _integer(records[i], 0, MAX_RECORD_MS, 0)
+	# Saves from before chapters had no "reached"; work it out from what they hold.
+	var reached := _integer(parsed.get("reached"), 0, SCENES.size() - 1, 0)
+	for i in SCENES.size():
+		if _profile["best_ms"][i] > 0:
+			reached = maxi(reached, mini(i + 1, SCENES.size() - 1))
+	if not _profile["resume"].is_empty():
+		reached = maxi(reached, _profile["resume"]["stage"])
+	_profile["reached"] = reached
 
 
 func reload_practice_records() -> void:
@@ -167,11 +227,37 @@ func resume_label() -> String:
 		return ""
 	var index: int = snapshot["stage"]
 	return Texts.TITLE_RESUME.format({
+		"챕터": Texts.chapter_name(Texts.chapter_of(index)),
 		"스테이지": Texts.stage_name(index), "구간": Texts.section(index, snapshot["checkpoint"]), "운동량": snapshot["charge"]})
 
 
 func best_ms(index: int) -> int:
 	return _profile["best_ms"][index]
+
+
+## The furthest stage the campaign has reached (entered, or cleared up to).
+func reached_stage() -> int:
+	return _profile.get("reached", 0)
+
+
+## Practice is open for all of chapter one and for any stage the campaign has reached.
+func practice_open(index: int) -> bool:
+	return Texts.chapter_of(index) <= 0 or index <= reached_stage()
+
+
+## True once the chapter's last stage has been finished in the campaign.
+func chapter_cleared(chapter: int) -> bool:
+	var size := Texts.chapter_size(chapter)
+	return size > 0 and best_ms(Texts.chapter_start(chapter) + size - 1) > 0
+
+
+## Chapters a new game can start from: the first, and any after a cleared one.
+func startable_chapters() -> Array[int]:
+	var chapters: Array[int] = [0]
+	for chapter in range(1, Texts.CHAPTERS.size()):
+		if chapter_cleared(chapter - 1):
+			chapters.append(chapter)
+	return chapters
 
 
 func stage_index(scene_path: String) -> int:
@@ -188,6 +274,8 @@ func entry_snapshot(index: int, charge: int) -> Dictionary:
 func save_checkpoint(snapshot: Dictionary) -> Error:
 	var candidate := _profile.duplicate(true)
 	candidate["resume"] = _clean_snapshot(snapshot)
+	if not candidate["resume"].is_empty():
+		candidate["reached"] = maxi(reached_stage(), candidate["resume"]["stage"])
 	return _commit(candidate)
 
 
@@ -198,10 +286,13 @@ func finish(index: int, elapsed_seconds: float, carry: int) -> Error:
 	if previous == 0 or time < previous:
 		candidate["best_ms"][index] = time
 	candidate["resume"] = entry_snapshot(index + 1, carry) if index + 1 < SCENES.size() else {}
+	candidate["reached"] = maxi(reached_stage(), mini(index + 1, SCENES.size() - 1))
 	return _commit(candidate)
 
 
-func open_stage(index: int, mode: Mode, snapshot: Dictionary) -> Error:
+## `replay` marks R pressed during a stage: the same stage again from its
+## entrance, which skips the chapter card.
+func open_stage(index: int, mode: Mode, snapshot: Dictionary, replay := false) -> Error:
 	if index < 0 or index >= SCENES.size():
 		return ERR_INVALID_PARAMETER
 	var packed := ResourceLoader.load(SCENES[index]) as PackedScene
@@ -213,6 +304,7 @@ func open_stage(index: int, mode: Mode, snapshot: Dictionary) -> Error:
 	stage.entry_charge = int(snapshot.get("entry_charge", 0))
 	stage.play_mode = mode
 	stage.initial_checkpoint = snapshot.duplicate()
+	stage.replay = replay
 	var result := get_tree().change_scene_to_node(stage)
 	if result != OK:
 		stage.free()
